@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#3a3a3c"
+    tools:context="io.renderapps.balizinha.activity.LoginActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true">
+
+        <ImageView
+            android:layout_width="150dp"
+            android:layout_height="150dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/ic_logo"
+            android:layout_marginTop="16dp" />
+
+
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/email_layout"
+            android:hint="@string/email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginBottom="16dp"
+            android:textColorHint="@android:color/white"
+            app:hintTextAppearance="@style/TextAppearence.App.TextInputLayout">
+
+            <EditText
+                android:id="@+id/email_field"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif"
+                android:inputType="textEmailAddress"
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                android:theme="@style/Theme.App.EditText"/>
+        </android.support.design.widget.TextInputLayout>
+
+        <android.support.design.widget.TextInputLayout
+            android:id="@+id/password_layout"
+            android:hint="@string/password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            app:passwordToggleEnabled="true"
+            android:textColorHint="@android:color/white"
+            app:hintTextAppearance="@style/TextAppearence.App.TextInputLayout">
+
+        <EditText
+                android:id="@+id/password_field"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:inputType="textPassword"
+                android:fontFamily="sans-serif"
+                android:textColor="@android:color/white"
+                android:theme="@style/Theme.App.EditText"/>
+        </android.support.design.widget.TextInputLayout>
+
+        <!--<Button-->
+            <!--android:id="@+id/button2"-->
+            <!--android:layout_width="wrap_content"-->
+            <!--android:layout_height="24dp"-->
+            <!--android:layout_marginEnd="16dp"-->
+            <!--android:layout_marginRight="16dp"-->
+            <!--android:layout_gravity="end"-->
+            <!--android:background="@null"-->
+            <!--android:fontFamily="sans-serif-light"-->
+            <!--android:text="@string/forgot_password"-->
+            <!--android:textColor="@android:color/white"-->
+            <!--android:textSize="14sp"-->
+            <!--android:textAllCaps="false"/>-->
+
+        <br.com.simplepass.loading_button_lib.customViews.CircularProgressButton
+            android:id="@+id/loginButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/button_round"
+            app:spinning_bar_width="4dp"
+            app:spinning_bar_color="@android:color/white"
+            app:spinning_bar_padding="6dp"
+            app:initialCornerAngle="50dp"
+            app:finalCornerAngle="50dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            android:text="@string/login_button"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/white"/>
+
+
+        <TextView
+            android:id="@+id/tvText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/login_option_divider"
+            android:textColor="@android:color/white" />
+
+        <Button
+            android:id="@+id/facebook_login_button"
+            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_marginEnd="16dp"
+            android:layout_marginStart="16dp"
+            android:text="@string/facebook_button"
+            android:layout_marginTop="16dp"
+            android:textColor="@android:color/white"
+            android:background="@drawable/button_facebook"
+            android:drawableLeft="@drawable/ic_facebook"
+            android:paddingStart="16dp"
+            android:paddingLeft="16dp"
+            android:paddingEnd="16dp"
+            android:paddingRight="16dp"/>
+
+        <com.facebook.login.widget.LoginButton
+            android:id="@+id/facebook_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="#EEEEEE"
+        android:layout_above="@+id/signUpButton"/>
+
+    <Button
+        android:id="@+id/signUpButton"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:fontFamily="sans-serif-light"
+        android:textColor="@color/colorPrimary"
+        android:textStyle="bold"
+        android:textSize="14sp"
+        android:text="@string/sign_up_button"
+        android:gravity="center"
+        android:layout_alignParentBottom="true"
+        android:background="@null"
+        android:textAllCaps="false"
+        android:alpha="1"/>
+
+</RelativeLayout>

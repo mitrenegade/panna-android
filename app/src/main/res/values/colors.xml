@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#577965</color>
+    <color name="colorPrimaryDark">#333335</color>
+    <color name="colorAccent">#9E9E9E</color>
+    <color name="dividerColor">#BDBDBD</color>
+    <color name="splashColor">#3a3a3c</color>
+
+    <!-- text colors -->
+    <color name="textPrimary">#212121</color>
+    <color name="textSecondary">#757575</color>
+
+    <!-- others -->
+    <color name="red">#F44336</color>
+    <color name="purple">#8E24AA</color>
+</resources>

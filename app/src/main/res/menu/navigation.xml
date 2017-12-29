@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_account"
+        android:icon="@drawable/ic_account"
+        android:title="@string/title_account" />
+
+    <item
+        android:id="@+id/navigation_map"
+        android:icon="@drawable/ic_marker_filled"
+        android:title="@string/title_map" />
+
+    <item
+        android:id="@+id/navigation_calendar"
+        android:icon="@drawable/ic_calendar"
+        android:title="@string/title_calendar" />
+
+</menu>

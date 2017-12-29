@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:layout_gravity="center"
+    android:orientation="vertical"
+    tools:context="io.renderapps.balizinha.activity.RegisterActivity">
+
+        <EditText
+            android:id="@+id/email"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_email"
+            android:drawableLeft="@drawable/ic_email"
+            android:drawablePadding="10dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="sans-serif"
+            android:hint="@string/email"
+            android:inputType="textEmailAddress"
+            android:textSize="15sp"
+            android:maxLength="254"
+            android:maxLines="1" />
+
+        <EditText
+            android:id="@+id/password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:drawableStart="@drawable/ic_lock"
+            android:drawableLeft="@drawable/ic_lock"
+            android:drawablePadding="10dp"
+            android:hint="@string/password"
+            android:inputType="textPassword"
+            android:fontFamily="sans-serif"
+            android:maxLength="30"
+            android:textSize="15sp"
+            android:maxLines="1" />
+
+        <EditText
+            android:id="@+id/confirm_password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:drawableStart="@drawable/ic_lock"
+            android:drawableLeft="@drawable/ic_lock"
+            android:drawablePadding="10dp"
+            android:hint="@string/confirm_password"
+            android:inputType="textPassword"
+            android:fontFamily="sans-serif"
+            android:maxLength="30"
+            android:textSize="15sp"
+            android:maxLines="1" />
+
+
+        <!-- Register Button -->
+        <br.com.simplepass.loading_button_lib.customViews.CircularProgressButton
+            android:id="@+id/sign_up_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/button_round"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            app:spinning_bar_width="4dp"
+            app:spinning_bar_color="@android:color/white"
+            app:spinning_bar_padding="6dp"
+            app:initialCornerAngle="50dp"
+            app:finalCornerAngle="50dp"
+            android:text="@string/register_button"
+            android:textColor="@android:color/white"/>
+
+        <!-- Link to Login Screen -->
+
+        <Button
+            android:id="@+id/sign_in_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginTop="24dp"
+            android:background="@null"
+            android:text="@string/already_registered"
+            android:textAllCaps="false"
+            android:textColor="@color/colorPrimary"
+            android:fontFamily="sans-serif-light"
+            android:textSize="15sp" />
+
+    </LinearLayout>

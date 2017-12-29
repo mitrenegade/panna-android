@@ -1,0 +1,87 @@
+<resources>
+    <string name="app_name">Balizinha</string>
+
+    <!-- login/register -->
+    <string name="login_button">Sign In</string>
+    <string name="register_button">Sign Up</string>
+    <string name="sign_up_button">Don\'t have an account? Sign Up!</string>
+    <string name="already_registered">Already have an account?</string>
+    <string name="email">Email</string>
+    <string name="password">Password</string>
+    <string name="confirm_password">Confirm Password</string>
+    <string name="forgot_password">Forgot password?</string>
+    <string name="login_option_divider">OR</string>
+    <string name="facebook_button">Log In with Facebook</string>
+    <string name="email_in_use">Email address is already in use by another account.</string>
+
+    <!-- profile -->
+    <string name="name">Name</string>
+    <string name="city">City</string>
+    <string name="description">Description</string>
+    <string name="save">Save</string>
+    <string name="set_photo_msg">Set a profile photo so other users know it\'s you!</string>
+    <string name="profile">Profile</string>
+
+    <!-- facebook -->
+    <string name="facebook_app_id">123063264768667</string>
+    <string name="fb_login_protocol_scheme">fb123063264768667</string>
+
+    <!-- firebase -->
+    <string name="db_error">Oops…Looks like something went wrong, try again.</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="title_account">Account</string>
+    <string name="title_map">Upcoming</string>
+    <string name="toolbar_title_map">Upcoming Events</string>
+    <string name="title_calendar">Calendar</string>
+
+    <!-- event -->
+    <string name="create_event">Create Event</string>
+    <string name="add_event">Add Event</string>
+    <string name="no_events">There are currently no events near you</string>
+    <string name="upcoming_events">Upcoming events</string>
+    <string name="past_events">Past events</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Leave</string>
+    <string name="preview">Preview</string>
+    <string name="join">Join</string>
+    <string name="none">None</string>
+    <string name="success_join_title">You\'ve joined a game</string>
+    <string name="success_join">You can go to your Calendar to see upcoming events</string>
+    <string name="available">Available</string>
+    <string name="unavailable">Unavailable</string>
+    <string name="players_underlined"><u>Players</u></string>
+    <string name="description_underlined"><u>Description</u></string>
+    <string name="leave_event">Are you sure you want to leave the game?</string>
+    <string name="add_name_title">Could not join event</string>
+    <string name="add_name">You need to add your name before joining a game. Update your profile now?</string>
+    <string name="payment_required_title">Payment Required</string>
+    <string name="payment_required_details">If you join, please pay the organizer when you show up for the game.</string>
+
+    <!-- account fragment -->
+    <array name="accountOptions">
+        <item name="profile">Edit profile</item>
+        <!--<item name="notifications">Push notifications</item>-->
+        <!--<item name="payment">Click to add a payment method</item>-->
+        <item name="version">Version 0.2</item>
+        <item name="logOut">Log out</item>
+    </array>
+    <string name="title_activity_chat">ChatActivity</string>
+    <string name="action_settings">Settings</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+
+    <!-- Payment -->
+    <string name="add_payment_title">Add a Card</string>
+    <string name="add_card_button">Add card</string>
+    <string name="invalid_card">Invalid card data</string>
+
+
+    <!-- Chat -->
+    <string name="messages_hint">Type a message…</string>
+    <string name="messages_hint_disabled">Join game to send messages</string>
+
+    <!-- Dialog -->
+    <string name="cancel">Cancel</string>
+    <string name="continue_button">Continue</string>
+
+
+</resources>

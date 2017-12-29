@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    tools:context="io.renderapps.balizinha.activity.SetupProfileActivity">
+
+    <ImageView
+        android:id="@+id/user_photo"
+        android:layout_width="85dp"
+        android:layout_height="85dp"
+        app:srcCompat="@drawable/ic_add_photo"
+        android:scaleType="centerCrop"
+        android:background="@null"
+        android:clickable="true"
+        android:focusable="true"
+        android:layout_marginTop="16dp"/>
+
+    <ProgressBar
+        android:id="@+id/upload_progress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        style="?android:progressBarStyleSmall"
+        android:visibility="gone"/>
+
+    <EditText
+        android:id="@+id/user_name"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:drawableStart="@drawable/ic_user"
+        android:drawableLeft="@drawable/ic_user"
+        android:drawablePadding="10dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:fontFamily="sans-serif"
+        android:hint="@string/name"
+        android:inputType="text"
+        android:textSize="15sp"
+        android:maxLength="50"
+        android:maxLines="1" />
+
+    <EditText
+        android:id="@+id/user_city"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:drawableStart="@drawable/ic_marker"
+        android:drawableLeft="@drawable/ic_marker"
+        android:drawablePadding="10dp"
+        android:hint="@string/city"
+        android:fontFamily="sans-serif"
+        android:maxLength="30"
+        android:textSize="15sp"
+        android:maxLines="1" />
+
+    <EditText
+        android:id="@+id/user_description"
+        android:layout_width="match_parent"
+        android:layout_height="75dp"
+        android:layout_marginBottom="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:drawableStart="@drawable/ic_text"
+        android:drawableLeft="@drawable/ic_description"
+        android:drawablePadding="10dp"
+        android:hint="@string/description"
+        android:fontFamily="sans-serif"
+        android:textSize="15sp"
+        android:maxLines="5"
+        android:maxLength="250"/>
+
+    <br.com.simplepass.loading_button_lib.customViews.CircularProgressButton
+        android:id="@+id/save_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/button_round"
+        android:layout_marginTop="16dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        app:spinning_bar_width="4dp"
+        app:spinning_bar_color="@android:color/white"
+        app:spinning_bar_padding="6dp"
+        app:initialCornerAngle="50dp"
+        app:finalCornerAngle="50dp"
+        android:text="@string/save"
+        android:textColor="@android:color/white"/>
+
+
+</LinearLayout>

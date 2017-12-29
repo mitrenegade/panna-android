@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="@dimen/ma_list_item_edges_padding"
+    android:paddingBottom="@dimen/ma_list_item_edges_padding"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?android:selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/option_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="@dimen/ma_list_item_end_icon_padding_start"
+        android:layout_marginStart="@dimen/ma_list_item_end_icon_padding_start"
+        android:layout_marginRight="@dimen/ma_list_item_edges_padding"
+        android:layout_marginEnd="@dimen/ma_list_item_edges_padding"
+        app:srcCompat="@drawable/ic_arrow"/>
+
+    <Switch
+        android:id="@+id/notification_switch"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentRight="true"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="@dimen/ma_list_item_end_icon_padding_start"
+        android:layout_marginStart="@dimen/ma_list_item_end_icon_padding_start"
+        android:layout_marginRight="@dimen/ma_list_item_edges_padding"
+        android:layout_marginEnd="@dimen/ma_list_item_edges_padding"
+        android:visibility="gone"/>
+
+    <TextView
+        android:id="@+id/option"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="@dimen/ma_list_item_end_icon_padding_start"
+        android:layout_marginStart="@dimen/ma_list_item_end_icon_padding_start"
+        android:layout_toLeftOf="@id/option_icon"
+        android:layout_toStartOf="@id/option_icon"
+        android:textSize="@dimen/ma_list_item_primary_text"
+        tools:text="Single-line item"/>
+
+</RelativeLayout>

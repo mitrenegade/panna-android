@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clickable="true"
+    android:focusable="true"
+    android:background="?android:selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/image"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="@dimen/ma_list_item_edges_padding"
+        android:layout_marginStart="@dimen/ma_list_item_edges_padding"
+        android:layout_marginTop="@dimen/ma_list_multi_line_item_avatar_icon_padding_top"
+        app:srcCompat="@drawable/ic_soccer"/>
+
+    <LinearLayout
+        android:id="@+id/event_details"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="@dimen/ma_list_item_edges_padding"
+        android:layout_marginBottom="@dimen/ma_list_item_edges_padding"
+        android:layout_marginLeft="@dimen/ma_list_item_edges_padding"
+        android:layout_marginStart="@dimen/ma_list_item_edges_padding"
+        android:layout_marginEnd="@dimen/ma_list_item_edges_padding"
+        android:layout_marginRight="@dimen/ma_list_item_edges_padding"
+        android:layout_toEndOf="@id/image"
+        android:layout_toRightOf="@id/image"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/ma_list_item_line_spacing"
+            android:textColor="@color/textPrimary"
+            android:textSize="@dimen/ma_list_item_primary_text"
+            tools:text="Three-line item"/>
+
+        <TextView
+            android:id="@+id/time"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/ma_list_item_line_spacing"
+            android:textColor="@color/textSecondary"
+            android:textSize="@dimen/ma_list_item_secondary_text"
+            tools:text="Secondary text"/>
+
+        <TextView
+            android:id="@+id/address"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/textSecondary"
+            android:textSize="@dimen/ma_list_item_secondary_text"
+            tools:text="Tertiary text"/>
+
+    </LinearLayout>
+
+
+    <TextView
+        android:id="@+id/player_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/ma_list_item_secondary_text"
+        android:layout_alignTop="@+id/event_details"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp"
+        android:gravity="center_vertical"
+        android:drawableStart="@drawable/ic_players_outline"
+        android:drawablePadding="10dp"
+        android:layout_marginBottom="@dimen/ma_list_item_line_spacing" />
+
+    <TextView
+        android:id="@+id/availability"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="@dimen/ma_list_item_secondary_text"
+        android:layout_below="@+id/player_count"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="@dimen/ma_list_item_line_spacing" />
+
+    <Button
+        android:id="@+id/join_button"
+        android:text="@string/join"
+        android:textSize="12sp"
+        android:layout_width="56dp"
+        android:layout_height="32dp"
+        android:layout_below="@+id/availability"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="16dp"
+        android:textColor="@android:color/white"
+        android:background="@drawable/join_button"/>
+
+</RelativeLayout>
