@@ -1,8 +1,11 @@
 package io.renderapps.balizinha.fragment;
 
+import android.content.Context;
+import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
@@ -25,22 +28,31 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.activity.ChatActivity;
+import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.adapter.ActionAdapter;
 import io.renderapps.balizinha.model.Action;
 import io.renderapps.balizinha.model.Message;
 import io.renderapps.balizinha.model.Player;
 
+import static io.renderapps.balizinha.util.Constants.REF_ACTIONS;
+import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
+
 
 public class ChatFragment extends Fragment implements View.OnClickListener {
 
+    private Context mContext;
     public static String EVENT_ID = "eid";
+    public static String EVENT_TITLE = "title";
     private String eventId;
+    private String eventTitle;
     private RecyclerView messagesRecycler;
     private EditText messageField;
     private ImageButton sendButton;
@@ -59,10 +71,11 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
         // Required empty public constructor
     }
 
-    public static ChatFragment newInstance(String eid){
+    public static ChatFragment newInstance(String eid, String title){
         ChatFragment fragment = new ChatFragment();
         Bundle args = new Bundle();
         args.putString(EVENT_ID, eid);
+        args.putString(EVENT_TITLE, title);
         fragment.setArguments(args);
         return fragment;
     }
@@ -70,14 +83,16 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mContext = getActivity();
         if (getArguments() != null) {
             eventId = getArguments().getString(EVENT_ID);
+            eventTitle = getArguments().getString(EVENT_TITLE);
         }
 
         users = new HashMap<>();
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         databaseRef = FirebaseDatabase.getInstance().getReference();
-        query = databaseRef.child("action").orderByChild("event").equalTo(eventId);
+        query = databaseRef.child(REF_ACTIONS).orderByChild("event").equalTo(eventId);
 
     }
 
@@ -90,6 +105,8 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
         messagesRecycler = rootView.findViewById(R.id.messages_recycler);
         messageField = rootView.findViewById(R.id.messageEditText);
         progressBar = rootView.findViewById(R.id.progressBar);
+        progressBar.getIndeterminateDrawable().setColorFilter(ContextCompat.getColor(mContext, R.color.colorPrimary),
+                PorterDuff.Mode.SRC_IN);
         sendButton = rootView.findViewById(R.id.sendButton);
         sendButton.setOnClickListener(this);
         sendButton.setEnabled(false);
@@ -113,12 +130,13 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
         // recycler
         final LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getActivity());
         linearLayoutManager.setStackFromEnd(true);
+//        linearLayoutManager.setReverseLayout(false);
         messagesRecycler.setLayoutManager(linearLayoutManager);
 
         // adapter
         actionList = new ArrayList<>();
 //        messages = new ArrayList<>();
-        adapter = new ActionAdapter(getActivity(), actionList);
+        adapter = new ActionAdapter(getActivity(), actionList, eventTitle);
         adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {
@@ -145,15 +163,27 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
-        enableMessaging();
+    public void onAttach(Context context) {
+        super.onAttach(context);
+        mContext = getActivity();
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
+    public void onStart() {
+        super.onStart();
+        messageField.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean hasFocus) {
+                if (hasFocus){
+                    if (adapter.getItemCount() > 0)
+                        messagesRecycler.smoothScrollToPosition(adapter.getItemCount() - 1);
+                }
+            }
+        });
+
+        enableMessaging();
     }
+
 
     public void checkEmptyState(){
         query.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -175,6 +205,12 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 Action action = dataSnapshot.getValue(Action.class);
                 actionList.add(action);
+                Collections.sort(actionList, new Comparator<Action>(){
+                    public int compare(Action obj1, Action obj2) {
+                        // ## Ascending order
+                        return Long.valueOf((long)obj1.getCreatedAt()).compareTo((long) obj2.getCreatedAt());
+                    }
+                });
                 updateAdapter();
 
 //                if (action.getType().equals("chat")) {
@@ -202,32 +238,32 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
         });
     }
 
-    public void fetchPlayer(final Message message){
-        databaseRef.child("players").child(message.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
-                    final Player player = dataSnapshot.getValue(Player.class);
-                    users.put(message.getUid(), player);
-                    createMessage(message, player);
-                }
-            }
+//    public void fetchPlayer(final Message message){
+//        databaseRef.child(REF_PLAYERS).child(message.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
+//            @Override
+//            public void onDataChange(DataSnapshot dataSnapshot) {
+//                if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
+//                    final Player player = dataSnapshot.getValue(Player.class);
+//                    users.put(message.getUid(), player);
+//                    createMessage(message, player);
+//                }
+//            }
+//
+//            @Override
+//            public void onCancelled(DatabaseError databaseError) {
+//            }
+//        });
+//    }
 
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-            }
-        });
-    }
-
-    public void createMessage(Message message, Player player){
-        if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty())
-            message.setPhotoUrl(player.getPhotoUrl());
-        if (player.getName() != null && !player.getName().isEmpty())
-            message.setName(player.getName());
-
-        messages.add(message);
-        updateAdapter();
-    }
+//    public void createMessage(Message message, Player player){
+//        if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty())
+//            message.setPhotoUrl(player.getPhotoUrl());
+//        if (player.getName() != null && !player.getName().isEmpty())
+//            message.setName(player.getName());
+//
+//        messages.add(message);
+//        updateAdapter();
+//    }
 
     public void updateAdapter(){
         if (isAdded()){
@@ -252,18 +288,18 @@ public class ChatFragment extends Fragment implements View.OnClickListener {
         final String message = messageField.getText().toString();
         messageField.setText("");
         final double time = System.currentTimeMillis() / 1000;
-        Action action = new Action(eventId, message, time, "chat", firebaseUser.getUid());
+        Action action = new Action(eventId, message, time, Action.ACTION_CHAT, firebaseUser.getUid());
         if (firebaseUser.getDisplayName() != null)
             action.setUsername(firebaseUser.getDisplayName());
-        String key = databaseRef.child("action").push().getKey();
-        databaseRef.child("action").child(key).setValue(action);
+        String key = databaseRef.child(REF_ACTIONS).push().getKey();
+        databaseRef.child(REF_ACTIONS).child(key).setValue(action);
     }
 
     public void enableMessaging(){
         // enable messaging if current user has joined game
-        boolean enable = ((ChatActivity)getActivity()).getUserStatus();
+        boolean enable = ((EventDetailsActivity)getActivity()).getUserStatus();
         messageField.setEnabled(enable);
-        sendButton.setEnabled(enable);
+//        sendButton.setEnabled(enable);
 
         if (!enable)
             messageField.setHint(R.string.messages_hint_disabled);

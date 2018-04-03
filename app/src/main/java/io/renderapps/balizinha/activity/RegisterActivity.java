@@ -1,15 +1,10 @@
 package io.renderapps.balizinha.activity;
 
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.os.Handler;
 import android.support.annotation.NonNull;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -23,8 +18,11 @@ import com.google.firebase.database.FirebaseDatabase;
 import br.com.simplepass.loading_button_lib.customViews.CircularProgressButton;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.Helpers;
+import io.renderapps.balizinha.util.GeneralHelpers;
 
+/**
+ * Registers a new user with email and password
+ */
 public class RegisterActivity extends AppCompatActivity implements View.OnClickListener {
 
     // views
@@ -78,14 +76,14 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
             registerButton.startAnimation();
             final String email = mEmailField.getText().toString().trim();
             final String password = mPasswordField.getText().toString().trim();
-            FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
+            FirebaseAuth.getInstance()
+                    .createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
                             if (task.isSuccessful()) {
                                 onAuthSuccess(email, task.getResult().getUser().getUid());
                             } else {
-                                Log.d("registerError", task.getException().toString());
                                 registerButton.revertAnimation();
                                 enableEditing(true);
                                 Toast.makeText(RegisterActivity.this,
@@ -120,7 +118,7 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
         } else
             mConfirmPasswordField.setError(null);
 
-        if (!Helpers.isValidEmail(email)) {
+        if (!GeneralHelpers.isValidEmail(email)) {
             mEmailField.setError("Invalid email");
             return false;
         } else
@@ -147,6 +145,7 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
     private void onAuthSuccess(String email, String uid) {
         // Write new user
         Player player = new Player(email);
+        player.setOs(getString(R.string.os_android));
         FirebaseDatabase.getInstance().getReference().child("players").child(uid).setValue(player)
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override

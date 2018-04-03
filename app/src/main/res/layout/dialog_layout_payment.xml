@@ -24,7 +24,7 @@
         android:gravity="center"
         android:fontFamily="sans-serif-condensed"
         android:textColor="@color/textPrimary"
-        android:textSize="18sp"
+        android:textSize="16sp"
         android:text="@string/payment_required_details"/>
 
 </LinearLayout>

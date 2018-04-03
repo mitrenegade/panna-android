@@ -1,12 +1,15 @@
 package io.renderapps.balizinha.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import java.util.Calendar;
 
 /**
  * Created by joel on 12/6/17.
  */
 
-public class Player {
+public class Player implements Parcelable {
 
     private String pid;
     private String email;
@@ -17,6 +20,7 @@ public class Player {
     private String deviceToken;
     private String fcmToken;
     private String promotionId;
+    private String os;
     private boolean isOwner;
     private long createdAt;
 
@@ -25,6 +29,8 @@ public class Player {
     }
 
     public Player(String email) {
+        this.name = "";
+        this.city = "";
         this.email = email;
         this.createdAt = System.currentTimeMillis();
     }
@@ -70,6 +76,9 @@ public class Player {
         return pid;
     }
 
+    public String getOs() {
+        return os;
+    }
 
     // setters
     public void setEmail(String email) {
@@ -112,4 +121,47 @@ public class Player {
     public void setPid(String pid) {
         this.pid = pid;
     }
+
+    public void setOs(String os) {
+        this.os = os;
+    }
+
+    // Parcelling part
+    public Player(Parcel in){
+        String[] data = new String[4];
+
+        in.readStringArray(data);
+        // the order needs to be the same as in writeToParcel() method
+        this.pid = data[0];
+        this.name = data[1];
+        this.photoUrl = data[2];
+        if (data[3] != null)
+            this.city = data[3];
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        // all we need for now when passing data through bundle
+        dest.writeStringArray(new String[] {
+                this.pid,
+                this.name,
+                this.photoUrl,
+                this.city
+                });
+    }
+    public static final Parcelable.Creator CREATOR = new Parcelable.Creator() {
+        public Player createFromParcel(Parcel in) {
+            return new Player(in);
+        }
+
+        public Player[] newArray(int size) {
+            return new Player[size];
+        }
+    };
+
 }

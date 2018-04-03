@@ -2,6 +2,7 @@ package io.renderapps.balizinha.adapter;
 
 import android.content.Context;
 import android.content.Intent;
+import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -30,11 +31,19 @@ import java.util.Locale;
 import java.util.Map;
 
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.activity.ChatActivity;
+import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.activity.UserProfileActivity;
 import io.renderapps.balizinha.model.Action;
 import io.renderapps.balizinha.model.Player;
 import io.renderapps.balizinha.util.CircleTransform;
+import io.renderapps.balizinha.util.GeneralHelpers;
+
+import static io.renderapps.balizinha.model.Action.ACTION_CHAT;
+import static io.renderapps.balizinha.model.Action.ACTION_CREATE;
+import static io.renderapps.balizinha.model.Action.ACTION_JOIN;
+import static io.renderapps.balizinha.model.Action.ACTION_LEAVE;
+import static io.renderapps.balizinha.model.Action.ACTION_PAID;
+import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
 
 /**
  * Created by joel
@@ -42,7 +51,6 @@ import io.renderapps.balizinha.util.CircleTransform;
  */
 
 public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder> {
-
 
     class ViewHolder extends RecyclerView.ViewHolder {
         ImageView photo;
@@ -62,14 +70,16 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
     private Context mContext;
     private List<Action> messages;
     private Map<String, Player> currentUsers;
+    private String eventTitle;
     private SimpleDateFormat mFormatter = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
 
     private FirebaseUser firebaseUser;
     private DatabaseReference databaseRef;
 
-    public ActionAdapter(Context context, List<Action> messages){
+    public ActionAdapter(Context context, List<Action> messages, String eventTitle){
         this.mContext = context;
         this.messages = messages;
+        this.eventTitle = eventTitle;
         this.currentUsers = new HashMap<>();
         this.firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         this.databaseRef = FirebaseDatabase.getInstance().getReference();
@@ -87,41 +97,52 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
         final Action action = messages.get(position);
         final Date date = new Date((long)action.getCreatedAt() * 1000);
         switch (action.getType()){
-            case "createEvent":
+            case ACTION_CREATE:
                 if (action.getUser().equals(firebaseUser.getUid()))
-                    holder.action.setText("You created this event on ".concat(mFormatter.format(date)));
+                    holder.action.setText("You created ".concat(eventTitle).concat(" on ").concat(mFormatter.format(date)));
                 else {
                     if (action.getUsername() != null)
-                        holder.action.setText(action.getUsername().concat(" created this event on ").concat(mFormatter.format(date)));
+                        holder.action.setText(action.getUsername().concat(" created ").concat(eventTitle)
+                                .concat(" on ").concat(mFormatter.format(date)));
                     else
-                        holder.action.setText("Event created on ".concat(mFormatter.format(date)));
+                        holder.action.setText(eventTitle.concat(" created on ").concat(mFormatter.format(date)));
                 }
                 showAction(holder);
                 break;
-            case "joinEvent":
+            case ACTION_JOIN:
                 if (action.getUser().equals(firebaseUser.getUid()))
-                    holder.action.setText("You joined this event");
+                    holder.action.setText("You joined ".concat(eventTitle));
                 else {
                     if (action.getUsername() != null)
-                        holder.action.setText(action.getUsername().concat(" joined this event"));
+                        holder.action.setText(action.getUsername().concat(" joined ").concat(eventTitle));
                     else
-                     holder.action.setText("A new user has joined this event");
-                }
-                showAction(holder);
-
-                break;
-            case "leaveEvent":
-                if (action.getUser().equals(firebaseUser.getUid()))
-                    holder.action.setText("You left this event");
-                else {
-                    if (action.getUsername() != null)
-                        holder.action.setText(action.getUsername().concat(" has left this event"));
-                    else
-                        holder.action.setText("A user has left this event");
+                     holder.action.setText("A new user has joined ".concat(eventTitle));
                 }
                 showAction(holder);
                 break;
-            case "chat":
+            case ACTION_PAID:
+                if (action.getUser().equals(firebaseUser.getUid()))
+                    holder.action.setText("You paid for ".concat(eventTitle));
+                else {
+                    if (action.getUsername() != null)
+                        holder.action.setText(action.getUsername().concat(" paid for ").concat(eventTitle));
+                    else
+                        holder.action.setText("A new user has paid for ".concat(eventTitle));
+                }
+                showAction(holder);
+                break;
+            case ACTION_LEAVE:
+                if (action.getUser().equals(firebaseUser.getUid()))
+                    holder.action.setText("You left ".concat(eventTitle));
+                else {
+                    if (action.getUsername() != null)
+                        holder.action.setText(action.getUsername().concat(" has left ").concat(eventTitle));
+                    else
+                        holder.action.setText("A user has left ".concat(eventTitle));
+                }
+                showAction(holder);
+                break;
+            case ACTION_CHAT:
                 holder.action.setVisibility(View.GONE);
                 holder.photo.setVisibility(View.VISIBLE);
                 holder.username.setVisibility(View.VISIBLE);
@@ -177,14 +198,14 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
                 Intent userProfileIntent = new Intent(mContext, UserProfileActivity.class);
                 userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getPid());
                 mContext.startActivity(userProfileIntent);
-                ((ChatActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
+                ((EventDetailsActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
 
             }
         });
     }
 
     private void fetchUser(final ViewHolder holder, final String uid){
-        databaseRef.child("players").child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
+        databaseRef.child(REF_PLAYERS).child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
@@ -206,17 +227,20 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
     }
 
     private void loadImage(ImageView iv, String photoUrl){
-        RequestOptions myOptions = new RequestOptions()
-                .fitCenter()
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .transform(new CircleTransform(mContext))
-                .placeholder(R.drawable.ic_default_photo);
-        // load photo
-        Glide.with(mContext)
-                .asBitmap()
-                .apply(myOptions)
-                .load(photoUrl)
-                .into(iv);
-    }
+        GeneralHelpers.glideImage(mContext, iv, photoUrl, R.drawable.ic_default_photo);
 
+//        RequestOptions myOptions = new RequestOptions()
+//                .fitCenter()
+//                .diskCacheStrategy(DiskCacheStrategy.ALL)
+//                .transform(new CircleTransform(mContext))
+//                .placeholder(R.drawable.ic_default_photo);
+//        // load photo
+//        if (mContext != null && !((AppCompatActivity)mContext).isFinishing()) {
+//            Glide.with(mContext)
+//                    .asBitmap()
+//                    .apply(myOptions)
+//                    .load(photoUrl)
+//                    .into(iv);
+//        }
+    }
 }

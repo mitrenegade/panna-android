@@ -44,10 +44,10 @@
               "client_type": 3
             },
             {
-              "client_id": "604793521337-ucvtl11bm9k5mo944h5vj6dv67digg0q.apps.googleusercontent.com",
+              "client_id": "604793521337-m1lcimo2n9lk7plkev984ugku2jge79e.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "io.renderapps.balizinha"
+                "bundle_id": "io.renderapps.balizinha.admin"
               }
             }
           ]

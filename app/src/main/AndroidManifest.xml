@@ -12,6 +12,8 @@
 
     <uses-feature android:name="android.hardware.camera" />
 
+     <!--<meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />-->
+
     <application
         android:name=".AppController"
         android:allowBackup="true"
@@ -89,13 +91,19 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".activity.ChatActivity"
+            android:name=".activity.EventDetailsActivity"
             android:label="@string/title_activity_chat"
+            android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity
             android:name=".activity.UserProfileActivity"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar" />
+        <activity android:name=".activity.AttendeesActivity" />
+
+        <service
+            android:name=".service.FirebaseService"
+            android:exported="false"></service>
     </application>
 
 </manifest>

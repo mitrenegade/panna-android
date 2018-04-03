@@ -41,10 +41,9 @@ import java.util.Locale;
 import io.github.luizgrp.sectionedrecyclerviewadapter.Section;
 import io.github.luizgrp.sectionedrecyclerviewadapter.SectionParameters;
 import io.github.luizgrp.sectionedrecyclerviewadapter.SectionedRecyclerViewAdapter;
-import io.renderapps.balizinha.activity.ChatActivity;
+import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.MainActivity;
-import io.renderapps.balizinha.model.Action;
 import io.renderapps.balizinha.model.Event;
 
 public class CalendarFragment extends Fragment implements AdapterView.OnItemSelectedListener {
@@ -61,7 +60,7 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
     private Calendar calendar;
 
     private SimpleDateFormat mFormatter = new SimpleDateFormat("EE, MMM dd @ h:mm aa", Locale.getDefault());
-    Date todaysDate = new Date();
+    Date todaysDate;
 
     // views
     SectionedRecyclerViewAdapter sectionAdapter;
@@ -83,6 +82,7 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // init
+        todaysDate = new Date();
         auth = FirebaseAuth.getInstance();
         mDatabaseRef = FirebaseDatabase.getInstance().getReference();
         mFirebaseUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -119,7 +119,6 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
         RecyclerView recyclerView = root.findViewById(R.id.calendar_reycler);
         recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
         recyclerView.setAdapter(sectionAdapter);
-
         return root;
     }
 
@@ -238,11 +237,11 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
                     if (isAdded()) {
                         final Event event = dataSnapshot.getValue(Event.class);
                         event.setEid(dataSnapshot.getKey());
-                        final Date eventDate = new Date(event.getCreatedAt() * 1000);
+                        final Date eventDate = new Date(event.getEndTime() * 1000);
                         final String eventKey = dataSnapshot.getKey();
 
                         // upcoming events
-                        if (eventDate.after(todaysDate) || eventDate.equals(todaysDate)){
+                        if (todaysDate.before(eventDate)){
                             final int eventIndex = mUpcomingEventIds.indexOf(eventKey);
                             if (eventIndex > -1) {
                                 upcomingEventList.set(eventIndex, event);
@@ -332,17 +331,22 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
+            public void onCancelled(DatabaseError databaseError) {}
         });
     }
 
     public void onUserLeave(final Event event){
+
         // dialog
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setMessage(getString(R.string.leave_event));
         builder.setCancelable(false);
+
+        if (!event.paymentRequired){
+            builder.setMessage(getString(R.string.leave_event));
+        } else {
+            builder.setTitle(getString(R.string.leave_event_title));
+            builder.setMessage(getString(R.string.leave_paid_event));
+        }
 
         builder.setPositiveButton(
                 "Yes, I'm sure",
@@ -354,12 +358,12 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
                                 .child(mFirebaseUser.getUid()).setValue(false);
 
                         // create and add event action
-                        Action action = new Action(event.getEid(), "", event.getCreatedAt(),
-                                Action.ACTION_LEAVE, mFirebaseUser.getUid());
-                        if (mFirebaseUser.getDisplayName() != null)
-                            action.setUsername(mFirebaseUser.getDisplayName());
-                        String actionKey = mDatabaseRef.child("action").push().getKey();
-                        mDatabaseRef.child("action").child(actionKey).setValue(action);
+//                        Action action = new Action(event.getEid(), "", event.getCreatedAt(),
+//                                Action.ACTION_LEAVE, mFirebaseUser.getUid());
+//                        if (mFirebaseUser.getDisplayName() != null)
+//                            action.setUsername(mFirebaseUser.getDisplayName());
+//                        String actionKey = mDatabaseRef.child("action").push().getKey();
+//                        mDatabaseRef.child("action").child(actionKey).setValue(action);
 
                     }
                 });
@@ -437,27 +441,46 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             else
                 ((ItemViewHolder) holder).paymentView.setVisibility(View.GONE);
 
-            if (!event.getOwner().equals(mFirebaseUser.getUid())) {
-                if (mHeader == UPCOMING) {
-                    itemHolder.editButton.setVisibility(View.VISIBLE);
-                    itemHolder.editButton.setText(getString(R.string.delete));
-                    itemHolder.editButton.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.white));
-                    itemHolder.editButton.setOnClickListener(new View.OnClickListener() {
-                        @Override
-                        public void onClick(View view) {
-                            onUserLeave(event);
-                        }
-                    });
-                }
+            if (mHeader == UPCOMING) {
+                itemHolder.editButton.setVisibility(View.VISIBLE);
+                itemHolder.editButton.setText(getString(R.string.delete));
+                itemHolder.editButton.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.white));
+                itemHolder.editButton.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        onUserLeave(event);
+                    }
+                });
             } else
                 itemHolder.editButton.setVisibility(View.GONE);
 
+
+//            if (!event.getOwner().equals(mFirebaseUser.getUid())) {
+//                if (mHeader == UPCOMING) {
+//                    itemHolder.editButton.setVisibility(View.VISIBLE);
+//                    itemHolder.editButton.setText(getString(R.string.delete));
+//                    itemHolder.editButton.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.white));
+//                    itemHolder.editButton.setOnClickListener(new View.OnClickListener() {
+//                        @Override
+//                        public void onClick(View view) {
+//                            onUserLeave(event);
+//                        }
+//                    });
+//                }
+//            } else
+//                itemHolder.editButton.setVisibility(View.GONE);
+
             itemHolder.title.setText(event.getName().concat(" ").concat("(").concat(event.getType())
                     .concat(")"));
-            String address = event.getCity();
-            if (event.getState() != null)
-                address = address.concat(", ").concat(event.getState());
-            itemHolder.address.setText(address);
+
+            if (event.getPlace() != null && !event.getPlace().isEmpty()){
+                itemHolder.address.setText(event.getPlace());
+            } else {
+                String address = event.getCity();
+                if (event.getState() != null)
+                    address = address.concat(", ").concat(event.getState());
+                itemHolder.address.setText(address);
+            }
 
             // Date
             formatTime(event.getStartTime());
@@ -467,26 +490,23 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             itemHolder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Intent intent = new Intent(getActivity(), ChatActivity.class);
-                    intent.putExtra(ChatActivity.EVENT_ID, event.getEid());
-                    intent.putExtra(ChatActivity.EVENT_TITLE, event.getName());
-                    intent.putExtra(ChatActivity.EVENT_TYPE, event.getType());
-                    intent.putExtra(ChatActivity.EVENT_INFO, event.getInfo());
-                    intent.putExtra(ChatActivity.EVENT_CITY, event.getCity());
-                    intent.putExtra(ChatActivity.EVENT_STATE, event.getState());
-                    intent.putExtra(ChatActivity.EVENT_CREATOR, event.getOwner());
-                    intent.putExtra(ChatActivity.EVENT_CREATED_AT, event.getCreatedAt());
-                    intent.putExtra(ChatActivity.EVENT_TIME, event.getStartTime());
-                    intent.putExtra(ChatActivity.EVENT_PAYMENT, event.paymentRequired);
-                    intent.putExtra(ChatActivity.EVENT_LAUNCH_MODE, true);
+                    Intent intent = new Intent(getActivity(), EventDetailsActivity.class);
+                    intent.putExtra(EventDetailsActivity.EVENT_ID, event.getEid());
+                    intent.putExtra(EventDetailsActivity.EVENT_TITLE, event.getName());
+                    intent.putExtra(EventDetailsActivity.EVENT_LAUNCH_MODE, true);
 
                     // user already joined game if accessing from Calendar
-                    intent.putExtra(ChatActivity.EVENT_PLAYER_STATUS, true);
+                    intent.putExtra(EventDetailsActivity.EVENT_PLAYER_STATUS, true);
                     if (mHeader == PAST)
-                        intent.putExtra(ChatActivity.EVENT_STATUS, true);
+                        intent.putExtra(EventDetailsActivity.EVENT_STATUS, true);
                     else
-                        intent.putExtra(ChatActivity.EVENT_STATUS, false);
+                        intent.putExtra(EventDetailsActivity.EVENT_STATUS, false);
+
+                    // start activity
                     startActivity(intent);
+                    ((MainActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right,
+                            R.anim.anim_slide_out_left);
+
                 }
             });
 

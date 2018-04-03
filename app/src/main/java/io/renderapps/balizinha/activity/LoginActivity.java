@@ -8,15 +8,12 @@ import android.support.design.widget.TextInputLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.view.animation.AnimationUtils;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import com.facebook.AccessToken;
-import com.facebook.AccessTokenTracker;
 import com.facebook.CallbackManager;
 import com.facebook.FacebookCallback;
 import com.facebook.FacebookException;
@@ -25,10 +22,13 @@ import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
+import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException;
+import com.google.firebase.auth.FirebaseAuthInvalidUserException;
 import com.google.firebase.auth.FirebaseAuthUserCollisionException;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -40,8 +40,11 @@ import com.google.firebase.database.ValueEventListener;
 import br.com.simplepass.loading_button_lib.customViews.CircularProgressButton;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.Helpers;
+import io.renderapps.balizinha.util.GeneralHelpers;
 
+/**
+ * Authenticates a user using email/password or through Facebook
+ */
 
 public class LoginActivity extends AppCompatActivity implements View.OnClickListener {
     final private String TAG = LoginActivity.class.getSimpleName();
@@ -52,7 +55,6 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     private EditText mEmailField;
     private EditText mPasswordField;
     private CircularProgressButton loginButton;
-    private Button facebookLoginButton;
 
     // firebase
     private FirebaseAuth auth;
@@ -63,8 +65,6 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     private LoginButton facebookButton;
     /* The callback manager for Facebook */
     private CallbackManager mFacebookCallbackManager;
-    /* Used to track user logging in/out off Facebook */
-    private AccessTokenTracker mFacebookAccessTokenTracker;
     private LoginManager loginManager;
 
     @Override
@@ -78,13 +78,12 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         passwordLayout = findViewById(R.id.password_layout);
         mPasswordField = findViewById(R.id.password_field);
         loginButton = findViewById(R.id.loginButton);
-        facebookLoginButton = findViewById(R.id.facebook_login_button);
         facebookButton = findViewById(R.id.facebook_button);
 
         // listeners
         findViewById(R.id.signUpButton).setOnClickListener(this);
+        findViewById(R.id.facebook_login_button).setOnClickListener(this);
         loginButton.setOnClickListener(this);
-        facebookLoginButton.setOnClickListener(this);
 
         // init
         mHandler = new Handler();
@@ -124,7 +123,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
     }
 
     /******************************************************************************
-     * Actions
+     * Private methods handling authentication
      *****************************************************************************/
 
     private void onSignUp(){
@@ -136,42 +135,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         finish();
     }
 
-    private void onSignIn(){
-        if (!validateForm()) {
-            return;
-        }
-
-        loginButton.startAnimation();
-        mEmailField.setEnabled(false);
-        mPasswordField.setEnabled(false);
-        String email = mEmailField.getText().toString();
-        String password = mPasswordField.getText().toString();
-
-        auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            Bitmap check = Helpers.getBitmapFromVectorDrawable(getBaseContext(),
-                                    R.drawable.ic_check);
-                            loginButton.doneLoadingAnimation(android.R.color.white, check);
-                            mHandler.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    launchMainActivity();
-                                }
-                            }, 1000);
-                        } else {
-                            Toast.makeText(LoginActivity.this, "Incorrect email or password",
-                                    Toast.LENGTH_SHORT).show();
-                            mEmailField.setEnabled(true);
-                            mPasswordField.setEnabled(true);
-                            loginButton.revertAnimation();
-                        }
-                    }
-                });
-    }
-
+    // check for valid email and password entry
     public boolean validateForm(){
         boolean isValid = true;
 
@@ -192,6 +156,60 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
         }
 
         return isValid;
+    }
+
+    private void onSignIn(){
+        if (!validateForm()) {
+            return;
+        }
+
+        loginButton.startAnimation();
+        mEmailField.setEnabled(false);
+        mPasswordField.setEnabled(false);
+        String email = mEmailField.getText().toString();
+        String password = mPasswordField.getText().toString();
+
+        auth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<AuthResult> task) {
+                        if (task.isSuccessful()) {
+                            Bitmap check = GeneralHelpers.getBitmapFromVectorDrawable(getBaseContext(),
+                                    R.drawable.ic_check);
+                            loginButton.doneLoadingAnimation(android.R.color.white, check);
+                            mHandler.postDelayed(new Runnable() {
+                                @Override
+                                public void run() {
+                                    launchMainActivity();
+                                }
+                            }, 1000);
+                        } else {
+                            handleException(task.getException());
+                            mEmailField.setEnabled(true);
+                            mPasswordField.setEnabled(true);
+                            loginButton.revertAnimation();
+                        }
+                    }
+                });
+    }
+
+    void handleException(Exception exception){
+        try {
+            throw exception;
+        } catch(FirebaseNetworkException e) {
+            showToast("Could not connect to network.");
+        } catch(FirebaseAuthInvalidCredentialsException e) {
+            showToast("Invalid email address or password.");
+        } catch (FirebaseAuthInvalidUserException e){
+            showToast("There is no account associated with this email address.");
+        } catch(Exception e) {
+            showToast("Looks like something went wrong, try again.");
+        }
+    }
+
+    void showToast(String message){
+        Toast.makeText(LoginActivity.this, message,
+                Toast.LENGTH_SHORT).show();
     }
 
     /* *************************************
@@ -245,25 +263,21 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
                         if (task.isSuccessful()) {
                             // Sign in success, update UI with the signed-in user's information
                             onFacebookAuth(auth.getCurrentUser());
-//                            FirebaseUser user = auth.getCurrentUser();
-//                            launchMainActivity();
                         } else {
-                                try {
-                                    throw task.getException();
-                                    // If sign in fails, display a message to the user.
-                                } catch(FirebaseAuthUserCollisionException e) {
-                                    Toast.makeText(LoginActivity.this, "There is " +
-                                                    "already an account with the email associated with" +
-                                                    " your Facebook account. Please log in using the email option.",
-                                            Toast.LENGTH_LONG).show();
-                                } catch(Exception e) {
-                                    Toast.makeText(LoginActivity.this, "Authentication failed.",
-                                            Toast.LENGTH_SHORT).show();
-                                    Log.d(TAG, task.getException().toString());
-                                }
+                            try {
+                                throw task.getException();
+                                // If sign in fails, display a message to the user.
+                            } catch(FirebaseAuthUserCollisionException e) {
+                                Toast.makeText(LoginActivity.this, "There is " +
+                                                "already an account with the email associated with" +
+                                                " your Facebook account. Please log in using the email option.",
+                                        Toast.LENGTH_LONG).show();
+                            } catch(Exception e) {
+                                Toast.makeText(LoginActivity.this, "Authentication failed.",
+                                        Toast.LENGTH_SHORT).show();
+                            }
                         }
                         loginManager.logOut();
-                        // ...
                     }
                 });
     }
@@ -293,9 +307,7 @@ public class LoginActivity extends AppCompatActivity implements View.OnClickList
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
+            public void onCancelled(DatabaseError databaseError) {}
         });
     }
 

@@ -4,7 +4,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -20,15 +19,18 @@ import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
 import io.renderapps.balizinha.util.CircleTransform;
 
+import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
+
+/**
+ * Class displays a users profile
+ */
+
 public class UserProfileActivity extends AppCompatActivity {
 
     // properties
     public static String USER_ID = "uid";
     private String uid;
 
-    // views
-    private FrameLayout rootView;
-    private ImageView background;
     private ImageView photo;
     private TextView name;
     private TextView city;
@@ -49,8 +51,6 @@ public class UserProfileActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         // views
-        rootView = findViewById(R.id.rootView);
-        background = findViewById(R.id.background);
         photo = findViewById(R.id.user_photo);
         name = findViewById(R.id.user_name);
         city = findViewById(R.id.user_city);
@@ -67,7 +67,7 @@ public class UserProfileActivity extends AppCompatActivity {
     }
 
     public void loadUserProfile(){
-        FirebaseDatabase.getInstance().getReference().child("players")
+        FirebaseDatabase.getInstance().getReference().child(REF_PLAYERS)
                 .child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -96,9 +96,7 @@ public class UserProfileActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
+            public void onCancelled(DatabaseError databaseError) {}
         });
     }
 

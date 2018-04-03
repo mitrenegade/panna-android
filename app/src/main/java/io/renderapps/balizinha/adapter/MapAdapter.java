@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.RecyclerView;
@@ -11,8 +12,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -20,19 +25,24 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
-import io.renderapps.balizinha.activity.ChatActivity;
+import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.MainActivity;
 import io.renderapps.balizinha.activity.SetupProfileActivity;
-import io.renderapps.balizinha.model.Action;
+import io.renderapps.balizinha.fragment.MapFragment;
 import io.renderapps.balizinha.model.Event;
 import io.renderapps.balizinha.model.Player;
+import io.renderapps.balizinha.util.Constants;
+import io.renderapps.balizinha.util.GeneralHelpers;
 
 /**
  * Created by joel on
@@ -60,20 +70,28 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
         }
     }
 
-    // properties
-    private Context mContext;
+    // firebase
     private DatabaseReference databaseRef;
+    private DatabaseReference paymentRef;
     private FirebaseUser firebaseUser;
+    private FirebaseRemoteConfig mFirebaseRemoteConfig;
+
+    // properties
+    private MapFragment mapFragment;
+    private Context mContext;
     private List<Event> events;
     private Calendar calendar;
     private SimpleDateFormat mFormatter = new SimpleDateFormat("EE, MMM dd @ h:mm aa", Locale.getDefault());
 
-    public MapAdapter(Context context, List<Event> events){
+    public MapAdapter(Context context, MapFragment mapFragment, List<Event> events){
         this.mContext = context;
+        this.mapFragment = mapFragment;
         this.events = events;
         this.databaseRef = FirebaseDatabase.getInstance().getReference();
+        this.paymentRef = databaseRef.child("charges").child("events");
         this.firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         this.calendar = Calendar.getInstance();
+        this.mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
     }
 
     @Override
@@ -84,24 +102,19 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
     }
 
     @Override
-    public void onBindViewHolder(final ViewHolder holder, int position) {
+    public void onBindViewHolder(final ViewHolder holder, final int position) {
         final Event event = events.get(position);
-
-        if (event.getAmount() == event.getMaxPlayers()) {
-            holder.availability.setText(R.string.unavailable);
-            holder.joinButton.setVisibility(View.GONE);
-        }
-        else {
-            holder.availability.setText(R.string.available);
-            holder.joinButton.setVisibility(View.VISIBLE);
-        }
 
         holder.title.setText(event.getName().concat(" ").concat("(").concat(event.getType())
                 .concat(")"));
-        String address = event.getCity();
-        if (event.getState() != null)
-            address = address.concat(", ").concat(event.getState());
-        holder.address.setText(address);
+        if (event.getPlace() != null && !event.getPlace().isEmpty()){
+            holder.address.setText(event.getPlace());
+        } else {
+            String address = event.getCity();
+            if (event.getState() != null)
+                address = address.concat(", ").concat(event.getState());
+            holder.address.setText(address);
+        }
 
         // Date
         formatTime(event.getStartTime());
@@ -111,32 +124,21 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
         holder.joinButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Player player = null;
-                Activity act = ((AppCompatActivity)mContext);
-                if (act instanceof MainActivity)
-                    player = ((MainActivity) act).getCurrentUser();
-
-                if (player != null && player.getName() != null && !player.getName().isEmpty()) {
-                    if (event.paymentRequired)
-                        showPaymentDialog(event);
-                    else {
-                        databaseRef.child("userEvents").child(firebaseUser.getUid())
-                                .child(event.getEid()).setValue(true);
-                        databaseRef.child("eventUsers").child(event.getEid())
-                                .child(firebaseUser.getUid()).setValue(true);
-
-                        // create and add event action
-                        Action action = new Action(event.getEid(), "", event.createdAt,
-                                Action.ACTION_JOIN, firebaseUser.getUid());
-                        if (firebaseUser.getDisplayName() != null)
-                            action.setUsername(firebaseUser.getDisplayName());
-                        String actionKey = databaseRef.child("action").push().getKey();
-                        databaseRef.child("action").child(actionKey).setValue(action);
-
-                        showSuccess();
+                if (mapFragment.isPaymentInProcess(event.getEid())){
+                    Toast.makeText(mContext, "Still processing payment...",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (mContext instanceof MainActivity){
+                    Player player = ((MainActivity)mContext).getCurrentUser();
+                    if (player != null && player.getName() != null && !player.getName().isEmpty()) {
+                        if (event.paymentRequired)
+                            hasUserAlreadyPaid(event);
+                        else
+                            onUserJoin(event);
+                    } else {
+                        GeneralHelpers.showAddNameDialog(mContext);
                     }
-                } else {
-                    showAddNameDialog();
                 }
             }
         });
@@ -144,22 +146,14 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(mContext, ChatActivity.class);
-                intent.putExtra(ChatActivity.EVENT_ID, event.getEid());
-                intent.putExtra(ChatActivity.EVENT_TITLE, event.getName());
-                intent.putExtra(ChatActivity.EVENT_TYPE, event.getType());
-                intent.putExtra(ChatActivity.EVENT_INFO, event.getInfo());
-                intent.putExtra(ChatActivity.EVENT_CITY, event.getCity());
-                intent.putExtra(ChatActivity.EVENT_STATE, event.getState());
-                intent.putExtra(ChatActivity.EVENT_CREATOR, event.getOwner());
-                intent.putExtra(ChatActivity.EVENT_CREATED_AT, event.getCreatedAt());
-                intent.putExtra(ChatActivity.EVENT_TIME, event.getStartTime());
-                intent.putExtra(ChatActivity.EVENT_PAYMENT, event.paymentRequired);
-                intent.putExtra(ChatActivity.EVENT_PLAYER_STATUS, false);
-                intent.putExtra(ChatActivity.EVENT_STATUS, false);
-                intent.putExtra(ChatActivity.EVENT_LAUNCH_MODE, false);
-
+                Intent intent = new Intent(mContext, EventDetailsActivity.class);
+                intent.putExtra(EventDetailsActivity.EVENT_ID, event.getEid());
+                intent.putExtra(EventDetailsActivity.EVENT_TITLE, event.getName());
+                intent.putExtra(EventDetailsActivity.EVENT_PLAYER_STATUS, false);
+                intent.putExtra(EventDetailsActivity.EVENT_STATUS, false);
+                intent.putExtra(EventDetailsActivity.EVENT_LAUNCH_MODE, false);
                 mContext.startActivity(intent);
+                ((MainActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
             }
         });
 
@@ -175,6 +169,14 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
                         }
                     }
                     holder.player_count.setText(String.valueOf(count));
+                    if (count >= event.getMaxPlayers()) {
+                        holder.availability.setText(R.string.unavailable);
+                        holder.joinButton.setVisibility(View.GONE);
+                    }
+                    else {
+                        holder.availability.setText(R.string.available);
+                        holder.joinButton.setVisibility(View.VISIBLE);
+                    }
                 }
             }
 
@@ -198,32 +200,102 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
         calendar.set(Calendar.MILLISECOND, 0);
     }
 
-    private void showAddNameDialog(){
+    // has user paid for game already, left and is now joining again
+    private void hasUserAlreadyPaid(final Event event){
+        paymentRef.child(event.getEid()).keepSynced(true);
+        paymentRef.child(event.getEid()).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                boolean userDidPay = false;
+                if (dataSnapshot.exists() && dataSnapshot.hasChildren()){
+                    for (DataSnapshot child: dataSnapshot.getChildren()){
+                        if (child.child("player_id").getValue(String.class).equals(firebaseUser.getUid())){
+                            final String status = child.child("status").getValue(String.class);
+                            if (status != null && status.equals("succeeded")){
+                                userDidPay = true;
+                                paymentRef.child(event.getEid()).keepSynced(false);
+                                onUserJoin(event);
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!userDidPay)
+                    isPaymentConfigEnabled(event);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {}
+        });
+    }
+
+    private void isPaymentConfigEnabled(final Event event){
+        final int cacheExpiration = Constants.CACHE_EXPIRATION;
+        mFirebaseRemoteConfig.fetch(cacheExpiration).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful()) {
+                    // After config data is successfully fetched, it must be activated before newly fetched
+                    // values are returned.
+                    mFirebaseRemoteConfig.activateFetched();
+                }
+                boolean paymentRequired = mFirebaseRemoteConfig.getBoolean(Constants.PAYMENT_CONFIG_KEY);
+                // check if user has added a payment method
+                if (paymentRequired)
+                    checkUserPaymentMethod(event);
+                else {
+                    showPaymentDialog(event);
+                }
+            }
+        });
+    }
+
+    private void confirmPaymentDialog(final Event event){
         AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-        builder.setTitle(mContext.getString(R.string.add_name_title));
-        builder.setMessage(mContext.getString(R.string.add_name));
+        builder.setTitle(mContext.getString(R.string.confirm_payment));
         builder.setCancelable(false);
 
-        builder.setPositiveButton(
-                "OK",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        Intent profileIntent = new Intent(mContext, SetupProfileActivity.class);
-                        profileIntent.putExtra(SetupProfileActivity.EXTRA_PROFILE_UPDATE, true);
-                        mContext.startActivity(new Intent(mContext, SetupProfileActivity.class));
-                        ((MainActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
-                    }
-                });
+        // Get the layout inflater
+        LayoutInflater inflater = ((MainActivity)mContext).getLayoutInflater();
 
-        builder.setNegativeButton(
-                "Not now",
-                new DialogInterface.OnClickListener() {
+        View view = inflater.inflate(R.layout.dialog_layout_payment, null);
+        ((TextView)view.findViewById(R.id.payment_details)).setText("Press Ok to pay $"
+                .concat(String.format(Locale.getDefault(), "%.2f", event.getAmount())).concat(" for this game."));
+        builder.setView(view)
+                // Add action buttons
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int id) {
+                        onAddCharge(event);
+                    }
+                })
+                .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
                     }
                 });
 
-        builder.create().show();
+            builder.create().show();
+    }
+
+    private void checkUserPaymentMethod(final Event event){
+        if (firebaseUser != null) {
+            FirebaseDatabase.getInstance().getReference().child("stripe_customers")
+                    .child(firebaseUser.getUid()).child("source")
+                    .addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            if (dataSnapshot.exists() && dataSnapshot.getValue() != null)
+                                confirmPaymentDialog(event);
+                            else
+                                GeneralHelpers.showPaymentRequiredDialog(mContext);
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+                        }
+                    });
+        }
     }
 
     private void showPaymentDialog(final Event event){
@@ -245,7 +317,7 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
                                 .child(event.getEid()).setValue(true);
                         databaseRef.child("eventUsers").child(event.getEid())
                                 .child(firebaseUser.getUid()).setValue(true);
-                        showSuccess();
+                        GeneralHelpers.showSuccessfulJoin(mContext);
                     }
                 })
                 .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -257,19 +329,62 @@ public class MapAdapter extends RecyclerView.Adapter<MapAdapter.ViewHolder> {
         builder.create().show();
     }
 
-    private void showSuccess(){
-        AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-        builder.setTitle(mContext.getString(R.string.success_join_title));
-        builder.setMessage(mContext.getString(R.string.success_join));
-        builder.setCancelable(false);
-        builder.setNegativeButton(
-                "Close",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                    }
-                });
+    private void onUserJoin(Event event){
+        databaseRef.child("userEvents").child(firebaseUser.getUid())
+                .child(event.getEid()).setValue(true);
+        databaseRef.child("eventUsers").child(event.getEid())
+                .child(firebaseUser.getUid()).setValue(true);
 
-        builder.create().show();
+        GeneralHelpers.showSuccessfulJoin(mContext);
+    }
+
+    private void onAddCharge(final Event event){
+        if (mapFragment.isAdded())
+            mapFragment.addProcessingPayment(event.getEid());
+        Toast.makeText(mContext, mContext.getString(R.string.processing_payment), Toast.LENGTH_SHORT).show();
+        if (firebaseUser != null) {
+            Map<String, Object> chargeChild = new HashMap<>();
+            final double price = event.getAmount() * 100;
+            final int chargeAmount = (int) price;
+
+            chargeChild.put("amount", chargeAmount);
+            chargeChild.put("player_id", firebaseUser.getUid());
+
+            // update
+            final String chargeKey = paymentRef.child(event.getEid()).push().getKey();
+            createPaymentListener(event, chargeKey);
+            paymentRef.child(event.getEid()).child(chargeKey).updateChildren(chargeChild);
+        }
+    }
+
+    // listen for successful payments
+    private void createPaymentListener(final Event event, String chargeKey){
+        paymentRef.child(event.getEid()).child(chargeKey).addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
+                    final String status = dataSnapshot.child("status").getValue(String.class);
+                    if (status != null){
+                        if (status.equals("succeeded")){
+                            onUserJoin(event);
+                        } else
+                            showFailedPayment();
+
+                        // remove processing payment
+                        if (mapFragment.isAdded())
+                            mapFragment.removeProcessingPayment(event.getEid());
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                showFailedPayment();
+            }
+        });
+    }
+
+    private void showFailedPayment(){
+        Toast.makeText(mContext, mContext.getString(R.string.payment_failed), Toast.LENGTH_LONG).show();
     }
 }

@@ -8,21 +8,19 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.PorterDuff;
 import android.location.Location;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.CountDownTimer;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -31,6 +29,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -56,16 +55,13 @@ import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.CreateEventActivity;
-import io.renderapps.balizinha.activity.MainActivity;
 import io.renderapps.balizinha.adapter.MapAdapter;
 import io.renderapps.balizinha.model.Event;
-import io.renderapps.balizinha.model.Player;
 
 public class MapFragment extends Fragment implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
@@ -77,6 +73,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     private List<Event> currentEvents;
     private List<String> currentEventsIds;
     private List<String> userEvents;
+    private List<String> processingPayments;
 
     // firebase
     private  FirebaseAuth auth;
@@ -88,7 +85,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     private ValueEventListener valueEventListener;
     private Query eventQuery;
 
-    //map
+    // map
     private MapView mMapView;
     private LocationRequest mLocationRequest;
     private GoogleApiClient mGoogleApiClient;
@@ -136,6 +133,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         currentEventsIds = new ArrayList<>();
         currentEvents = new ArrayList<>();
         userEvents = new ArrayList<>();
+        processingPayments = new ArrayList<>();
 
         // firebase
         auth = FirebaseAuth.getInstance();
@@ -150,13 +148,18 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
                 firebaseUser = firebaseAuth.getCurrentUser();
             }
         };
+
+        // query all games that have not reached endTime
         final double start = todaysDate.getTime() / 1000.0;
-        eventQuery = eventsRef.orderByChild("createdAt").startAt(start);
+        eventQuery = eventsRef.orderByChild("endTime").startAt(start);
 
         // views
         recyclerView = root.findViewById(R.id.event_recycler);
         emptyView = root.findViewById(R.id.empty_view);
         progressView = root.findViewById(R.id.progress_view);
+        ((ProgressBar)progressView.findViewById(R.id.progressbar)).getIndeterminateDrawable()
+                .setColorFilter(ContextCompat.getColor(mContext, R.color.colorPrimary),
+                PorterDuff.Mode.SRC_IN);
         setupRecycler();
 
         // map
@@ -205,6 +208,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         }
     }
 
+
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
@@ -241,7 +245,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
 //        linearLayoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.hasFixedSize();
-        mAdapter = new MapAdapter(getActivity(), currentEvents);
+        mAdapter = new MapAdapter(getActivity(), this, currentEvents);
         mAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {
@@ -276,6 +280,20 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
                 });
             }
         }
+    }
+
+    public void addProcessingPayment(String eventId){
+        processingPayments.add(eventId);
+    }
+
+    public void removeProcessingPayment(String eventId){
+        final int index = processingPayments.indexOf(eventId);
+        if (index > -1)
+            processingPayments.remove(index);
+    }
+
+    public boolean isPaymentInProcess(String eventId){
+        return processingPayments.contains(eventId);
     }
 
     /******************************************************************************
@@ -366,9 +384,11 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null) {
                     // check if event is today / upcoming
-                    double time = dataSnapshot.child("createdAt").getValue(Double.class) * 1000;
-                    Date eDate = new Date((long)time);
-                    if (eDate.equals(todaysDate) || eDate.after(todaysDate)) {
+//                    double time = dataSnapshot.child("startTime").getValue(Double.class) * 1000;
+                    long endTime = dataSnapshot.child("endTime").getValue(Long.class) * 1000;
+//                    Date eDate = new Date((long)time);
+                    Date endDate = new Date(endTime);
+                    if (todaysDate.before(endDate)) {
                         if (!userEvents.contains(dataSnapshot.getKey())) {
                             // game is upcoming, add listener to it
                             addEvent(dataSnapshot.getKey());
@@ -381,8 +401,10 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
             public void onChildChanged(DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null) {
                     // check if event is today / upcoming
-                    Date eDate = new Date(dataSnapshot.child("createdAt").getValue(Long.class) * 1000);
-                    if (eDate.equals(todaysDate) || eDate.after(todaysDate)) {
+//                    Date eDate = new Date(dataSnapshot.child("startTime").getValue(Long.class) * 1000);
+                    long endTime = dataSnapshot.child("endTime").getValue(Long.class) * 1000;
+                    Date endDate = new Date(endTime);
+                    if (todaysDate.before(endDate)) {
                         if (!userEvents.contains(dataSnapshot.getKey())) {
                             // game is upcoming, add listener to it
                             addEvent(dataSnapshot.getKey());
@@ -493,7 +515,9 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         mLocationRequest.setInterval(UPDATE_INTERVAL);
         //mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
-        if (android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (android.support.v4.app.ActivityCompat.checkSelfPermission(mContext,
+                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
@@ -503,7 +527,8 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     @Override
     public void onConnected(@Nullable Bundle bundle) {
         // Display the connection status
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                     LOCATION_REQUEST_CODE);
             return;
@@ -531,14 +556,10 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     }
 
     @Override
-    public void onConnectionSuspended(int i) {
-
-    }
+    public void onConnectionSuspended(int i) {}
 
     @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
+    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {}
 
     /******************************************************************************
      * Permission handler

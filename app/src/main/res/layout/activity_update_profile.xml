@@ -84,8 +84,8 @@
         android:layout_marginBottom="16dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:drawableStart="@drawable/ic_description"
-        android:drawableLeft="@drawable/ic_description"
+        android:drawableStart="@drawable/ic_text"
+        android:drawableLeft="@drawable/ic_text"
         android:drawablePadding="10dp"
         android:hint="@string/description"
         android:fontFamily="sans-serif"
@@ -101,6 +101,4 @@
         android:layout_marginTop="4dp"
         style="?android:progressBarStyleSmall"
         android:visibility="gone"/>
-
-
 </LinearLayout>

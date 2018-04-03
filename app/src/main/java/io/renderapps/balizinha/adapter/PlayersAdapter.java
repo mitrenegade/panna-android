@@ -9,17 +9,14 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.request.RequestOptions;
 
-import java.util.List;
+import java.util.ArrayList;
 
-import io.renderapps.balizinha.activity.ChatActivity;
+import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.UserProfileActivity;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.CircleTransform;
+import io.renderapps.balizinha.util.GeneralHelpers;
 
 /**
  * Created by joel
@@ -40,17 +37,18 @@ public class PlayersAdapter extends RecyclerView.Adapter<PlayersAdapter.ViewHold
     }
 
     // properties
-    private List<Player> players;
+    private ArrayList<Player> players;
     private Context mContext;
 
-    public PlayersAdapter(Context context, List<Player> players){
+    public PlayersAdapter(Context context, ArrayList<Player> players){
         this.players = players;
         this.mContext = context;
     }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_player, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_player, parent,
+                false);
         return new ViewHolder(view);
     }
 
@@ -60,7 +58,9 @@ public class PlayersAdapter extends RecyclerView.Adapter<PlayersAdapter.ViewHold
 
         holder.name.setText(player.getName());
         if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty()){
-            loadImage(holder.photo, player.getPhotoUrl());
+            GeneralHelpers.glideImage(mContext, holder.photo, player.getPhotoUrl(),
+                    R.drawable.ic_default_photo);
+
         } else
             holder.photo.setImageResource(R.drawable.ic_default_photo);
 
@@ -70,8 +70,8 @@ public class PlayersAdapter extends RecyclerView.Adapter<PlayersAdapter.ViewHold
                 Intent userProfileIntent = new Intent(mContext, UserProfileActivity.class);
                 userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getPid());
                 mContext.startActivity(userProfileIntent);
-                ((ChatActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
-
+                ((EventDetailsActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right,
+                        R.anim.anim_slide_out_left);
             }
         });
     }
@@ -79,19 +79,5 @@ public class PlayersAdapter extends RecyclerView.Adapter<PlayersAdapter.ViewHold
     @Override
     public int getItemCount() {
         return players.size();
-    }
-
-    private void loadImage(ImageView iv, String photoUrl){
-            RequestOptions myOptions = new RequestOptions()
-                    .fitCenter()
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .transform(new CircleTransform(mContext))
-                    .placeholder(R.drawable.ic_default_photo);
-            // load photo
-            Glide.with(mContext)
-                    .asBitmap()
-                    .apply(myOptions)
-                    .load(photoUrl)
-                    .into(iv);
     }
 }

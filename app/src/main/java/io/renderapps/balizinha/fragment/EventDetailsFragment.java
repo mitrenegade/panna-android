@@ -1,8 +1,11 @@
 package io.renderapps.balizinha.fragment;
 
 import android.content.Context;
+import android.content.Intent;
+import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -29,16 +32,22 @@ import java.util.List;
 import java.util.Locale;
 
 import io.renderapps.balizinha.R;
+import io.renderapps.balizinha.activity.AttendeesActivity;
+import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.adapter.PlayersAdapter;
+import io.renderapps.balizinha.model.Event;
 import io.renderapps.balizinha.model.Player;
 import io.renderapps.balizinha.util.CircleTransform;
+import io.renderapps.balizinha.util.GeneralHelpers;
+
+import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
 
 /**
  * Created by joel
  * on 12/20/17.
  */
 
-public class EventDetailsFragment extends Fragment {
+public class EventDetailsFragment extends Fragment implements View.OnClickListener {
 
     // load event from key or from bundle
     public static String EVENT_ID = "eid";
@@ -46,10 +55,12 @@ public class EventDetailsFragment extends Fragment {
     public static String EVENT_TYPE = "type";
     public static String EVENT_TIME = "time";
     public static String EVENT_INFO = "info";
+    public static String EVENT_PLACE = "place";
     public static String EVENT_CITY = "city";
     public static String EVENT_STATE = "state";
     public static String EVENT_CREATOR = "creator";
     public static String EVENT_PAYMENT = "payment_required";
+    public static String EVENT_PRICE = "event_price";
     public static String EVENT_PLAYER_STATUS = "player_status"; // joined or not
     public static String EVENT_STATUS = "event_status"; // upcoming or past
 
@@ -57,14 +68,16 @@ public class EventDetailsFragment extends Fragment {
     private String eventId;
     private String title;
     private String type;
+    private double price;
     private long time;
     private String description;
     private String creator_id;
     private String city;
     private String state;
+    private String place;
     private boolean payment_required;
     private Context mContext;
-    private List<Player> playerList;
+    private ArrayList<Player> playerList;
     private List<String> playerListIds;
     private PlayersAdapter playersAdapter;
     private SimpleDateFormat mFormatter = new SimpleDateFormat("EE, MMM dd \u2022 h:mm aa", Locale.getDefault());
@@ -78,32 +91,34 @@ public class EventDetailsFragment extends Fragment {
     private TextView event_title;
     private TextView event_time;
     private TextView event_location;
+    private TextView event_address;
     private TextView event_description;
     private TextView event_creator_name;
     private ImageView event_creator_photo;
-    private ImageView event_payment;
+    private TextView event_payment;
     private ProgressBar progressBar;
 
     public EventDetailsFragment() {
         // Required empty public constructor
     }
 
-    public static EventDetailsFragment newInstance(String eid, String title, String city, String state, String info,
-                                                   String creator, String type, long time, boolean player_status,
-                                                   boolean event_status, boolean payment_required) {
+    public static EventDetailsFragment newInstance(Event event, boolean player_status,
+                                                   boolean event_status) {
         EventDetailsFragment fragment = new EventDetailsFragment();
         Bundle args = new Bundle();
-        args.putString(EVENT_ID, eid);
-        args.putString(EVENT_TITLE, title);
-        args.putString(EVENT_CITY, city);
-        args.putString(EVENT_INFO, info);
-        args.putString(EVENT_CREATOR, creator);
-        args.putLong(EVENT_TIME, time);
-        args.putString(EVENT_TYPE, type);
-        args.putString(EVENT_STATE, state);
+        args.putString(EVENT_ID, event.getEid());
+        args.putString(EVENT_TITLE, event.getName());
+        args.putString(EVENT_CITY, event.getCity());
+        args.putString(EVENT_PLACE, event.getPlace());
+        args.putString(EVENT_INFO, event.getInfo());
+        args.putString(EVENT_CREATOR, event.getOwner());
+        args.putLong(EVENT_TIME, event.getStartTime());
+        args.putString(EVENT_TYPE, event.getType());
+        args.putString(EVENT_STATE, event.getState());
         args.putBoolean(EVENT_PLAYER_STATUS, player_status);
         args.putBoolean(EVENT_STATUS, event_status);
-        args.putBoolean(EVENT_PAYMENT, payment_required);
+        args.putBoolean(EVENT_PAYMENT, event.paymentRequired);
+        args.putDouble(EVENT_PRICE, event.getAmount());
         fragment.setArguments(args);
         return fragment;
     }
@@ -117,10 +132,12 @@ public class EventDetailsFragment extends Fragment {
             title = getArguments().getString(EVENT_TITLE);
             city = getArguments().getString(EVENT_CITY);
             state = getArguments().getString(EVENT_STATE);
+            place = getArguments().getString(EVENT_PLACE);
             description = getArguments().getString(EVENT_INFO);
             type = getArguments().getString(EVENT_TYPE);
             time = getArguments().getLong(EVENT_TIME);
             payment_required = getArguments().getBoolean(EVENT_PAYMENT);
+            price = getArguments().getDouble(EVENT_PRICE);
         }
 
         // firebase
@@ -139,17 +156,26 @@ public class EventDetailsFragment extends Fragment {
         event_time = rootView.findViewById(R.id.event_time);
         event_description = rootView.findViewById(R.id.event_description);
         event_location = rootView.findViewById(R.id.event_location);
+        event_address = rootView.findViewById(R.id.event_address);
         event_creator_name = rootView.findViewById(R.id.creator_name);
         event_creator_photo = rootView.findViewById(R.id.creator_img);
         event_payment = rootView.findViewById(R.id.payment_required);
         progressBar = rootView.findViewById(R.id.player_progressbar);
+        progressBar.getIndeterminateDrawable().setColorFilter(ContextCompat.getColor(mContext, R.color.colorPrimary),
+                PorterDuff.Mode.SRC_IN);
 
+
+        // on-click
+        rootView.findViewById(R.id.btn_attendees).setOnClickListener(this);
         // setup
         calendar = Calendar.getInstance();
         playerList = new ArrayList<>();
         playerListIds = new ArrayList<>();
+
         setupPlayersRecycler();
-        setupEvent();
+        setupEventDetails();
+        fetchCreator();
+        fetchPlayers();
 
         return rootView;
     }
@@ -178,7 +204,21 @@ public class EventDetailsFragment extends Fragment {
         playersRecycler.setAdapter(playersAdapter);
     }
 
-    private void setupEvent(){
+    public void updateEvent(Event event){
+        description = event.getInfo();
+        title = event.name;
+        place = event.getPlace();
+        city = event.getCity();
+        state = event.getState();
+        payment_required = event.paymentRequired;
+        time = event.getStartTime();
+        creator_id = event.getOwner();
+        type = event.getType();
+        price = event.getAmount();
+        setupEventDetails();
+    }
+
+    public void setupEventDetails(){
         // event
         if (description != null)
             if (description.isEmpty())
@@ -188,25 +228,32 @@ public class EventDetailsFragment extends Fragment {
 
         if (title != null)
             event_title.setText(title.concat(" ").concat("(").concat(type)
-                .concat(")"));
+                    .concat(")"));
+
+        // location
+        if (place != null && !place.isEmpty()){
+            event_location.setText(place);
+        } else {
+            event_location.setVisibility(View.GONE);
+        }
+
         String address = city;
         if (state != null)
             address = address.concat(", ").concat(state);
-        event_location.setText(address);
+        event_address.setText(address);
 
         // payment
-        if (payment_required)
+        if (payment_required) {
+            event_payment.setText(String.format(Locale.getDefault(),"%.2f", price));
             event_payment.setVisibility(View.VISIBLE);
+        }
 
         // Date
         formatTime(time);
         String time = mFormatter.format(calendar.getTime());
         event_time.setText(time);
-
-        // players
-        fetchCreator();
-        fetchPlayers();
     }
+
 
     void formatTime(double sec){
         calendar.clear();
@@ -219,7 +266,7 @@ public class EventDetailsFragment extends Fragment {
     }
 
     public void fetchCreator(){
-        databaseRef.child("players").child(creator_id).addListenerForSingleValueEvent(new ValueEventListener() {
+        databaseRef.child(REF_PLAYERS).child(creator_id).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
@@ -230,7 +277,8 @@ public class EventDetailsFragment extends Fragment {
                             public void run() {
                                 event_creator_name.setText(creator.getName());
                                 if (creator.getPhotoUrl() != null && !creator.getPhotoUrl().isEmpty())
-                                    loadImage(event_creator_photo, creator.getPhotoUrl());
+                                    GeneralHelpers.glideImage(mContext, event_creator_photo,
+                                            creator.getPhotoUrl(), R.drawable.ic_default_photo);
                                 creator.setPid(creator_id);
                                 playerListIds.add(creator_id);
                                 playerList.add(creator);
@@ -292,7 +340,7 @@ public class EventDetailsFragment extends Fragment {
     }
 
     public void addPlayer(final String pid){
-        databaseRef.child("players").child(pid).addListenerForSingleValueEvent(new ValueEventListener() {
+        databaseRef.child(REF_PLAYERS).child(pid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 final Player player = dataSnapshot.getValue(Player.class);
@@ -316,19 +364,20 @@ public class EventDetailsFragment extends Fragment {
         });
     }
 
-    public void loadImage(ImageView iv, String photoUrl){
-        if (isAdded()){
-            RequestOptions myOptions = new RequestOptions()
-                    .fitCenter()
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .transform(new CircleTransform(getActivity()))
-                    .placeholder(R.drawable.ic_default_photo);
-            // load photo
-            Glide.with(this)
-                    .asBitmap()
-                    .apply(myOptions)
-                    .load(photoUrl)
-                    .into(iv);
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()){
+            case R.id.btn_attendees:
+                Intent intent = new Intent(mContext, AttendeesActivity.class);
+                if (playerList != null && !playerList.isEmpty()){
+                    intent.putParcelableArrayListExtra(AttendeesActivity.EXTRA_PLAYERS,
+                            playerList);
+                }
+                startActivity(intent);
+                ((EventDetailsActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right,
+                        R.anim.anim_slide_out_left);
+                break;
         }
     }
 }

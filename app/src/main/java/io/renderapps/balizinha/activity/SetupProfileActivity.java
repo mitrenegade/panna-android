@@ -6,7 +6,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.net.Uri;
 import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -27,12 +26,8 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.request.RequestOptions;
+
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -55,9 +50,15 @@ import java.util.Map;
 import br.com.simplepass.loading_button_lib.customViews.CircularProgressButton;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
+import io.renderapps.balizinha.service.FirebaseService;
 import io.renderapps.balizinha.util.CircleTransform;
-import io.renderapps.balizinha.util.Helpers;
+import io.renderapps.balizinha.util.GeneralHelpers;
 
+import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
+
+/**
+ * Class creates user profile or updates
+ */
 public class SetupProfileActivity extends AppCompatActivity implements View.OnClickListener {
 
     // views
@@ -66,7 +67,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
     private EditText locationField;
     private EditText descriptionField;
     private CircularProgressButton saveButton;
-    private ProgressBar progressBar;
+
     // update views
     private ProgressBar updateProgressbar;
     private FrameLayout progressView;
@@ -77,13 +78,13 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
     private int PERMISSION_CAMERA = 102, PERMISSION_GALLERY = 103;
 
     private Context mContext;
-    private boolean didSetPhoto = false;
     private boolean isUpdating = false;
+    private boolean didSetuPhoto = false;
     private Player player;
+    private byte[] mBytes;
 
     // firebase
     private FirebaseUser firebaseUser;
-    private StorageReference mStorageRef;
     private DatabaseReference databaseRef;
 
     @Override
@@ -104,9 +105,8 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
 
         // firebase
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        mStorageRef = FirebaseStorage.getInstance().getReference();
         databaseRef = FirebaseDatabase.getInstance().getReference();
-        databaseRef.child("players").child(firebaseUser.getUid()).keepSynced(true);
+        databaseRef.child(REF_PLAYERS).child(firebaseUser.getUid()).keepSynced(true);
 
         // views
         profilePhoto = findViewById(R.id.user_photo);
@@ -114,7 +114,6 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         nameField = findViewById(R.id.user_name);
         locationField = findViewById(R.id.user_city);
         descriptionField = findViewById(R.id.user_description);
-        progressBar = findViewById(R.id.upload_progress);
 
         if (isUpdating) {
             updateProgressbar = findViewById(R.id.update_progressbar);
@@ -175,18 +174,20 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         if (!validForm()){
             enableEditing(true);
         } else {
-            if (!didSetPhoto) {
+            if (!didSetuPhoto) {
                 showDialog();
             } else {
                 saveButton.startAnimation();
-                // update
                 databaseRef.updateChildren(createChildUpdates())
                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful())
+                        if (task.isSuccessful()) {
+                            if (mBytes != null && mBytes.length > 0)
+                                FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
+                                        mBytes);
                             launchMainActivity();
-                        else {
+                        } else {
                             Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
                             enableEditing(true);
                             saveButton.revertAnimation();
@@ -208,6 +209,9 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
                         @Override
                         public void onComplete(@NonNull Task<Void> task) {
                             if (task.isSuccessful()){
+                                if (mBytes != null && mBytes.length > 0)
+                                    FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
+                                            mBytes);
                                 Toast.makeText(mContext, "Profile updated", Toast.LENGTH_LONG).show();
                                 onBackPressed();
                             } else {
@@ -226,6 +230,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         String name = nameField.getText().toString().trim();
         String city = locationField.getText().toString().trim();
         String info = descriptionField.getText().toString().trim();
+
         // add children
         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                 .setDisplayName(name).build();
@@ -258,7 +263,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
     }
 
     public void launchMainActivity(){
-        Bitmap check = Helpers.getBitmapFromVectorDrawable(mContext, R.drawable.ic_check);
+        Bitmap check = GeneralHelpers.getBitmapFromVectorDrawable(mContext, R.drawable.ic_check);
         saveButton.doneLoadingAnimation(android.R.color.white, check);
         new Handler().postDelayed(new Runnable() {
             @Override
@@ -281,7 +286,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
      *****************************************************************************/
 
     public void fetchAccount(){
-        databaseRef.child("players").child(firebaseUser.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
+        databaseRef.child(REF_PLAYERS).child(firebaseUser.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
@@ -300,7 +305,8 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
 
                     // load picture
                     if (player.getPhotoUrl() != null)
-                        glideImg(player.getPhotoUrl());
+                        GeneralHelpers.glideImage(mContext, profilePhoto, player.getPhotoUrl(),
+                                R.drawable.ic_default_photo);
                 }
             }
 
@@ -334,8 +340,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
-                        // user chooses not to set photo
-                        didSetPhoto = true;
+                        didSetuPhoto = true;
                         onSave();
                     }
                 });
@@ -435,133 +440,46 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         }
     }
 
-
-    private void onCaptureImageResult(Intent data) {
-        // encode img for storage
-        if (data.getExtras() != null) {
-            final Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-            byte[] byteFormat = bytes.toByteArray();
-
-            // [START get_child_ref]
-            // Get a reference to store file at photos/<FILENAME>.jpg
-            final StorageReference photoRef = mStorageRef.child("images/player/" + firebaseUser.getUid());
-            // [END get_child_ref]
-
-            UploadTask uploadTask = photoRef.putBytes(byteFormat);
-            uploadTask.addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
-                @Override
-                public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
-                    progressBar.setVisibility(View.VISIBLE);
-                }
-            })
-                    .addOnFailureListener(new OnFailureListener() {
-                        @Override
-                        public void onFailure(@NonNull Exception exception) {
-                            // Handle unsuccessful uploads
-                            progressBar.setVisibility(View.GONE);
-                            taskComplete(null);
-                        }
-                    }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                @Override
-                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                    // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
-                    @SuppressWarnings("VisibleForTests")Uri downloadUrl = taskSnapshot.getDownloadUrl();
-                    progressBar.setVisibility(View.GONE);
-                    taskComplete(downloadUrl);
-                    if (downloadUrl != null) {
-                        glideImg(downloadUrl.toString());
-                    }
-                }
-            });
-
-        } else {
-            Toast.makeText(mContext, "Failed to upload photo", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    public void taskComplete(Uri uri){
-        if (uri != null) {
-            databaseRef.child("players").child(firebaseUser.getUid()).child("photoUrl")
-                    .setValue(uri.toString());
-        }
-        else
-            Toast.makeText(mContext, "Failed to upload photo", Toast.LENGTH_SHORT).show();
-    }
-
     private void onSelectFromGalleryResult(Intent data) {
-
-        //Bitmap bm = null;
         if (data != null) {
+            final Bitmap bm;
             try {
-                // encode img
-                final Bitmap bm = MediaStore.Images.Media.getBitmap(getContentResolver(), data.getData());
+                bm = MediaStore.Images.Media.getBitmap(getContentResolver(), data.getData());
                 ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 bm.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
                 byte[] byteFormat = bytes.toByteArray();
-
-                // add img to db
-                // [START get_child_ref]
-                // Get a reference to store file at photos/<FILENAME>.jpg
-                final StorageReference photoRef = mStorageRef.child("profile_photos/" + firebaseUser.getUid());
-                // [END get_child_ref]
-
-                UploadTask uploadTask = photoRef.putBytes(byteFormat);
-                uploadTask.addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
-                        progressBar.setVisibility(View.VISIBLE);
-                    }
-                })
-                        .addOnFailureListener(new OnFailureListener() {
-                            @Override
-                            public void onFailure(@NonNull Exception exception) {
-                                // Handle unsuccessful uploads
-                                progressBar.setVisibility(View.GONE);
-                                taskComplete(null);
-                            }
-                        }).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
-                    @Override
-                    public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
-                        // taskSnapshot.getMetadata() contains file metadata such as size, content-type, and download URL.
-                        @SuppressWarnings("VisibleForTests") Uri downloadUrl = taskSnapshot.getDownloadUrl();
-                        taskComplete(downloadUrl);
-                        progressBar.setVisibility(View.GONE);
-
-                        // load up new profile photo w.o calling loadProfile
-                        //profileImg.setImageBitmap(bm);
-                        if (downloadUrl != null) {
-                            glideImg(downloadUrl.toString());
-                        }
-                    }
-                });
-
+                taskComplete(byteFormat);
             } catch (IOException e) {
                 e.printStackTrace();
+                Toast.makeText(this, "Failed to upload photo", Toast.LENGTH_SHORT).show();
             }
         }
     }
 
-
-    public void glideImg(String uri){
-        if (mContext != null) {
-            RequestOptions myOptions = new RequestOptions()
-                    .fitCenter()
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .transform(new CircleTransform(mContext));
-            if (isUpdating)
-                myOptions.placeholder(R.drawable.ic_default_photo);
-            else
-                myOptions.placeholder(R.drawable.ic_add_photo);
-            // load photo
-            Glide.with(mContext)
-                    .asBitmap()
-                    .apply(myOptions)
-                    .load(uri)
-                    .into(profilePhoto);
-            didSetPhoto = true;
+    public void onCaptureImageResult(Intent data) {
+        if (data.getExtras() != null) {
+            final Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
+            if (thumbnail != null) {
+                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
+                byte[] byteFormat = bytes.toByteArray();
+                taskComplete(byteFormat);
+                return;
+            }
         }
+        Toast.makeText(this, "Failed to upload photo", Toast.LENGTH_SHORT).show();
+    }
+
+    void taskComplete(byte[] bytes){
+        mBytes = bytes;
+        didSetuPhoto = true;
+        int drawable = R.drawable.ic_add_photo;
+        if (isUpdating)
+            if (player != null && player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty())
+                drawable = R.drawable.ic_default_photo;
+
+        GeneralHelpers.glideImageWithBytes(this, profilePhoto, mBytes,
+                drawable);
     }
 
     @Override

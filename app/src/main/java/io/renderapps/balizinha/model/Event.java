@@ -7,6 +7,7 @@ package io.renderapps.balizinha.model;
 public class Event {
 
     public String eid; // event id
+    public String photoUrl;
     public String city;
     public String info;
     public String name;
@@ -20,7 +21,7 @@ public class Event {
     public long endTime;
     public long createdAt;
     public int maxPlayers;
-    public int amount;
+    public double amount;
     public boolean paymentRequired;
     public boolean active;
 
@@ -33,6 +34,10 @@ public class Event {
 //        this.createdAt = System.currentTimeMillis();
 //    }
 
+
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
 
     public String getEid() {
         return eid;
@@ -90,7 +95,7 @@ public class Event {
         return state;
     }
 
-    public int getAmount() {
+    public double getAmount() {
         return amount;
     }
 
@@ -99,6 +104,11 @@ public class Event {
     }
 
     // setters
+
+
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
+    }
 
     public void setOwner(String owner) {
         this.owner = owner;
@@ -160,11 +170,11 @@ public class Event {
         this.state = state;
     }
 
-    public void setAmount(int amount) {
-        this.amount = amount;
-    }
-
     public void setEid(String eid) {
         this.eid = eid;
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
     }
 }

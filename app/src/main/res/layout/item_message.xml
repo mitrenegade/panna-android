@@ -50,10 +50,10 @@
             android:textColor="@android:color/white"
             android:textSize="16sp"
             tools:text="Two-line item"
+            android:fontFamily="sans-serif-condensed"
             android:textAppearance="?android:attr/textAppearanceLarge"
             android:gravity="start"
-            android:padding="10dp"
-            />
+            android:padding="10dp" />
 
         <TextView
             android:id="@+id/user_name"
@@ -65,5 +65,4 @@
             tools:text="Secondary text"/>
 
     </LinearLayout>
-
 </RelativeLayout>

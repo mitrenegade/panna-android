@@ -5,11 +5,11 @@ package io.renderapps.balizinha.model;
  */
 
 public class Action {
-
-    public static String ACTION_JOIN = "joinEvent";
-    public static String ACTION_LEAVE = "leaveEvent";
-    public static String ACTION_CREATE = "createEvent";
-    public static String ACTION_CHAT = "chat";
+    public static final String ACTION_JOIN = "joinEvent";
+    public static final String ACTION_LEAVE = "leaveEvent";
+    public static final String ACTION_CREATE = "createEvent";
+    public static final String ACTION_CHAT = "chat";
+    public static final String ACTION_PAID = "payForEvent";
 
     private double createdAt;
     private String event;
@@ -18,7 +18,9 @@ public class Action {
     private String user;
     private String username;
 
-    public Action(){}
+    public Action(){
+        // required
+    }
 
     public Action(String eid, String message, double time, String type, String uid){
         this.event = eid;
