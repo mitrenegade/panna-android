@@ -53,17 +53,88 @@
         android:layout_height="wrap_content"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <android.support.design.widget.FloatingActionButton
-        android:id="@+id/joinLeaveButton"
-        android:layout_width="wrap_content"
+    <!--<android.support.design.widget.FloatingActionButton-->
+        <!--android:id="@+id/joinLeaveButton"-->
+        <!--android:layout_width="wrap_content"-->
+        <!--android:layout_height="wrap_content"-->
+        <!--android:layout_marginEnd="16dp"-->
+        <!--android:layout_marginRight="16dp"-->
+        <!--app:backgroundTint="@color/colorPrimaryDark"-->
+        <!--app:fabSize="normal"-->
+        <!--app:borderWidth="0dp"-->
+        <!--app:srcCompat="@drawable/ic_add"-->
+        <!--app:layout_anchor="@id/collapsing_toolbar"-->
+        <!--app:layout_anchorGravity="bottom|right|end" />-->
+
+
+
+    <android.support.v7.widget.CardView
+        android:id="@+id/bottom_view"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="16dp"
-        android:layout_marginRight="16dp"
-        app:backgroundTint="@color/colorPrimaryDark"
-        app:fabSize="normal"
-        app:borderWidth="0dp"
-        app:srcCompat="@drawable/ic_add"
-        app:layout_anchor="@id/collapsing_toolbar"
-        app:layout_anchorGravity="bottom|right|end" />
+        android:layout_gravity="bottom"
+        app:cardElevation="4dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <Button
+                android:id="@+id/joinLeaveButton"
+                android:layout_width="96dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/background_join_button"
+                android:textColor="@android:color/white"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                style="?android:attr/borderlessButtonStyle"
+                android:text="Join Game"/>
+
+            <!--<TextView-->
+                <!--android:id="@+id/game_full"-->
+                <!--android:layout_width="wrap_content"-->
+                <!--android:layout_height="wrap_content"-->
+                <!--android:text="Game full"-->
+                <!--android:layout_gravity="center"-->
+                <!--android:textSize="16sp"-->
+                <!--android:fontFamily="sans-serif"-->
+                <!--android:textColor="@color/textPrimary"/>-->
+
+            <LinearLayout
+                android:id="@+id/status_layout"
+                android:visibility="gone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:orientation="horizontal">
+
+                <ProgressBar
+                    android:id="@+id/join_progress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    style="?android:progressBarStyleSmall"
+
+                    app:layout_constraintTop_toTopOf="@+id/status"
+                    app:layout_constraintRight_toLeftOf="@+id/status" />
+
+
+                <TextView
+                    android:id="@+id/status"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:gravity="bottom"
+                    android:text="Joining game..."
+                    android:fontFamily="sans-serif-condensed"
+                    android:textColor="@color/textSecondary"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+        </FrameLayout>
+    </android.support.v7.widget.CardView>
 
 </android.support.design.widget.CoordinatorLayout>

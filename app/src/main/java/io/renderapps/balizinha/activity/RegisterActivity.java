@@ -5,7 +5,7 @@ import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -16,57 +16,36 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.FirebaseDatabase;
 
 import br.com.simplepass.loading_button_lib.customViews.CircularProgressButton;
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
 import io.renderapps.balizinha.util.GeneralHelpers;
 
+import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
+
 /**
  * Registers a new user with email and password
  */
-public class RegisterActivity extends AppCompatActivity implements View.OnClickListener {
+public class RegisterActivity extends AppCompatActivity {
 
     // views
-    private EditText mEmailField;
-    private EditText mPasswordField;
-    private EditText mConfirmPasswordField;
-    private CircularProgressButton registerButton;
+    @BindView(R.id.email) EditText mEmailField;
+    @BindView(R.id.password) EditText mPasswordField;
+    @BindView(R.id.confirm_password) EditText mConfirmPasswordField;
+    @BindView(R.id.sign_up_button) CircularProgressButton registerButton;
+    @BindView(R.id.sign_in_button) Button signInButton;
 
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_register);
-
-        // views
-        mEmailField = findViewById(R.id.email);
-        mPasswordField = findViewById(R.id.password);
-        mConfirmPasswordField = findViewById(R.id.confirm_password);
-        registerButton = findViewById(R.id.sign_up_button);
-
-        // listeners
-        findViewById(R.id.sign_in_button).setOnClickListener(this);
-        registerButton.setOnClickListener(this);
-    }
-
-    @Override
-    public void onClick(View view) {
-        switch (view.getId()){
-            case R.id.sign_up_button:
-                registerUser();
-                break;
-            case R.id.sign_in_button:
-                onSignIn();
-                break;
-        }
-    }
-
-    public void onSignIn(){
+    // on-click
+    @OnClick(R.id.sign_in_button) void onSignIn(){
         Intent intent = new Intent(this, LoginActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         startActivity(intent);
         finish();
     }
 
-    public void registerUser(){
+    @OnClick(R.id.sign_up_button) void onSignUp(){
         enableEditing(false);
 
         if (!validateForm()){
@@ -92,7 +71,14 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
                         }
                     });
         }
+    }
 
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_register);
+        ButterKnife.bind(this);
     }
 
     public boolean validateForm() {
@@ -145,8 +131,7 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
     private void onAuthSuccess(String email, String uid) {
         // Write new user
         Player player = new Player(email);
-        player.setOs(getString(R.string.os_android));
-        FirebaseDatabase.getInstance().getReference().child("players").child(uid).setValue(player)
+        FirebaseDatabase.getInstance().getReference().child(REF_PLAYERS).child(uid).setValue(player)
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
@@ -160,6 +145,7 @@ public class RegisterActivity extends AppCompatActivity implements View.OnClickL
         mEmailField.setEnabled(isEnabled);
         mPasswordField.setEnabled(isEnabled);
         mConfirmPasswordField.setEnabled(isEnabled);
+        signInButton.setEnabled(isEnabled);
     }
 
     @Override

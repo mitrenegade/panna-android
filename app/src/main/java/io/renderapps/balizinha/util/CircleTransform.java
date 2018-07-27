@@ -17,17 +17,19 @@ package io.renderapps.balizinha.util;
  * limitations under the License.
  */
 
-        import android.content.Context;
-        import android.graphics.Bitmap;
-        import android.graphics.BitmapShader;
-        import android.graphics.Canvas;
-        import android.graphics.Matrix;
-        import android.graphics.Paint;
-        import com.bumptech.glide.Glide;
-        import com.bumptech.glide.load.Transformation;
-        import com.bumptech.glide.load.engine.Resource;
-        import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
-        import com.bumptech.glide.load.resource.bitmap.BitmapResource;
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapShader;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.support.annotation.NonNull;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.Transformation;
+import com.bumptech.glide.load.engine.Resource;
+import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
+import com.bumptech.glide.load.resource.bitmap.BitmapResource;
 
         import java.security.MessageDigest;
 
@@ -45,7 +47,7 @@ public class CircleTransform implements Transformation<Bitmap> {
 
 
     @Override
-    public Resource<Bitmap> transform(Context context, Resource<Bitmap> resource, int outWidth, int outHeight) {
+    public Resource<Bitmap> transform(@NonNull Context context, @NonNull Resource<Bitmap> resource, int outWidth, int outHeight) {
         Bitmap source = resource.get();
         int size = Math.min(source.getWidth(), source.getHeight());
 
@@ -53,9 +55,6 @@ public class CircleTransform implements Transformation<Bitmap> {
         int height = (source.getHeight() - size) / 2;
 
         Bitmap bitmap = mBitmapPool.get(size, size, Bitmap.Config.ARGB_8888);
-        if (bitmap == null) {
-            bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
-        }
 
         Canvas canvas = new Canvas(bitmap);
         Paint paint = new Paint();
@@ -77,7 +76,5 @@ public class CircleTransform implements Transformation<Bitmap> {
     }
 
     @Override
-    public void updateDiskCacheKey(MessageDigest messageDigest) {
-
-    }
+    public void updateDiskCacheKey(@NonNull MessageDigest messageDigest) {}
 }

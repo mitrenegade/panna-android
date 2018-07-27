@@ -13,8 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
-        android:background="@drawable/soccer_field"
-        />
+        android:background="@drawable/soccer_field" />
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
@@ -59,9 +58,10 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
                 android:gravity="center"
-                android:fontFamily="sans-serif-condensed"
-                android:textSize="21sp"
-                android:textAppearance="@style/TextAppearance.AppCompat.Headline"/>
+                android:fontFamily="sans-serif-medium"
+                android:textSize="18sp"
+                android:textColor="@color/textPrimary"
+                tools:text="Joel Goncalves"/>
 
             <TextView
                 android:id="@+id/user_city"
@@ -69,18 +69,20 @@
                 android:layout_height="wrap_content"
                 android:gravity="center"
                 android:layout_marginTop="4dp"
-                android:fontFamily="sans-serif-light"
+                android:fontFamily="sans-serif"
+                android:textColor="@color/textPrimary"
                 android:textSize="16sp"
-                android:textAppearance="@style/TextAppearance.AppCompat.Subhead"/>
+                tools:text="Brockton, MA"/>
 
             <TextView
                 android:id="@+id/user_description"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:fontFamily="sans-serif-light"
+                android:fontFamily="sans-serif"
                 android:textSize="16sp"
-                android:textAppearance="@style/TextAppearance.AppCompat.Body1"/>
+                android:textColor="@color/textSecondary"
+                tools:text="Hello world. This is a description."/>
 
 
         </LinearLayout>

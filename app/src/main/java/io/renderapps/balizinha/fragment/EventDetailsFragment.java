@@ -3,7 +3,9 @@ package io.renderapps.balizinha.fragment;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.PorterDuff;
+import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.LinearLayoutManager;
@@ -15,15 +17,15 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.request.RequestOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -31,14 +33,15 @@ import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.AttendeesActivity;
-import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.adapter.PlayersAdapter;
 import io.renderapps.balizinha.model.Event;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.CircleTransform;
-import io.renderapps.balizinha.util.GeneralHelpers;
+import io.renderapps.balizinha.util.PhotoHelper;
 
 import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
 
@@ -47,78 +50,57 @@ import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
  * on 12/20/17.
  */
 
-public class EventDetailsFragment extends Fragment implements View.OnClickListener {
+public class EventDetailsFragment extends Fragment {
 
-    // load event from key or from bundle
-    public static String EVENT_ID = "eid";
-    public static String EVENT_TITLE = "title";
-    public static String EVENT_TYPE = "type";
-    public static String EVENT_TIME = "time";
-    public static String EVENT_INFO = "info";
-    public static String EVENT_PLACE = "place";
-    public static String EVENT_CITY = "city";
-    public static String EVENT_STATE = "state";
-    public static String EVENT_CREATOR = "creator";
-    public static String EVENT_PAYMENT = "payment_required";
-    public static String EVENT_PRICE = "event_price";
-    public static String EVENT_PLAYER_STATUS = "player_status"; // joined or not
-    public static String EVENT_STATUS = "event_status"; // upcoming or past
+    public static String EXTRA_EVENT = "event";
 
     // properties
-    private String eventId;
-    private String title;
-    private String type;
-    private double price;
-    private long time;
-    private String description;
-    private String creator_id;
-    private String city;
-    private String state;
-    private String place;
-    private boolean payment_required;
-    private Context mContext;
+    private Event mEvent;
+    private DatabaseReference databaseRef;
+
     private ArrayList<Player> playerList;
     private List<String> playerListIds;
     private PlayersAdapter playersAdapter;
-    private SimpleDateFormat mFormatter = new SimpleDateFormat("EE, MMM dd \u2022 h:mm aa", Locale.getDefault());
+    private SimpleDateFormat dateFormatter = new SimpleDateFormat("EE, MMM dd", Locale.getDefault());
+    private SimpleDateFormat timeFormatter = new SimpleDateFormat("h:mm aa", Locale.getDefault());
     private Calendar calendar;
 
-    // firebase
-    private DatabaseReference databaseRef;
+    // Views
+    @BindView(R.id.players_recycler) RecyclerView playersRecycler;
+    @BindView(R.id.event_title) TextView event_title;
+    @BindView(R.id.event_date) TextView event_date;
+    @BindView(R.id.event_time) TextView event_time;
+    @BindView(R.id.event_location) TextView event_location;
+    @BindView(R.id.event_city) TextView event_city;
+    @BindView(R.id.event_description) TextView event_description;
+    @BindView(R.id.creator_name) TextView event_creator_name;
+    @BindView(R.id.payment_required) TextView event_payment;
+    @BindView(R.id.creator_img) ImageView event_creator_photo;
+    @BindView(R.id.player_progressbar) ProgressBar progressBar;
+    @BindView(R.id.player_count) TextView numOfPlayers;
+    @BindView(R.id.btn_attendees) TextView viewAttendees;
 
-    // views
-    private RecyclerView playersRecycler;
-    private TextView event_title;
-    private TextView event_time;
-    private TextView event_location;
-    private TextView event_address;
-    private TextView event_description;
-    private TextView event_creator_name;
-    private ImageView event_creator_photo;
-    private TextView event_payment;
-    private ProgressBar progressBar;
 
-    public EventDetailsFragment() {
-        // Required empty public constructor
+    @OnClick(R.id.btn_attendees) void viewAttendees(){
+        if (!isAdded() || getActivity() == null) return;
+
+        Intent intent = new Intent(getActivity(), AttendeesActivity.class);
+        if (playerList != null && !playerList.isEmpty())
+            intent.putParcelableArrayListExtra(AttendeesActivity.EXTRA_PLAYERS,
+                    playerList);
+
+        startActivity(intent);
+        getActivity().overridePendingTransition(R.anim.anim_slide_in_right,
+                R.anim.anim_slide_out_left);
     }
 
-    public static EventDetailsFragment newInstance(Event event, boolean player_status,
-                                                   boolean event_status) {
+
+    public static EventDetailsFragment newInstance(Event event) {
         EventDetailsFragment fragment = new EventDetailsFragment();
+
         Bundle args = new Bundle();
-        args.putString(EVENT_ID, event.getEid());
-        args.putString(EVENT_TITLE, event.getName());
-        args.putString(EVENT_CITY, event.getCity());
-        args.putString(EVENT_PLACE, event.getPlace());
-        args.putString(EVENT_INFO, event.getInfo());
-        args.putString(EVENT_CREATOR, event.getOwner());
-        args.putLong(EVENT_TIME, event.getStartTime());
-        args.putString(EVENT_TYPE, event.getType());
-        args.putString(EVENT_STATE, event.getState());
-        args.putBoolean(EVENT_PLAYER_STATUS, player_status);
-        args.putBoolean(EVENT_STATUS, event_status);
-        args.putBoolean(EVENT_PAYMENT, event.paymentRequired);
-        args.putDouble(EVENT_PRICE, event.getAmount());
+        args.putParcelable(EXTRA_EVENT, event);
+
         fragment.setArguments(args);
         return fragment;
     }
@@ -126,131 +108,96 @@ public class EventDetailsFragment extends Fragment implements View.OnClickListen
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            eventId = getArguments().getString(EVENT_ID);
-            creator_id = getArguments().getString(EVENT_CREATOR);
-            title = getArguments().getString(EVENT_TITLE);
-            city = getArguments().getString(EVENT_CITY);
-            state = getArguments().getString(EVENT_STATE);
-            place = getArguments().getString(EVENT_PLACE);
-            description = getArguments().getString(EVENT_INFO);
-            type = getArguments().getString(EVENT_TYPE);
-            time = getArguments().getLong(EVENT_TIME);
-            payment_required = getArguments().getBoolean(EVENT_PAYMENT);
-            price = getArguments().getDouble(EVENT_PRICE);
-        }
+        if (getArguments() != null)
+            mEvent = getArguments().getParcelable(EXTRA_EVENT);
 
-        // firebase
         databaseRef = FirebaseDatabase.getInstance().getReference();
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         View rootView =  inflater.inflate(R.layout.fragment_event_details, container, false);
+        ButterKnife.bind(this, rootView);
 
-        // views
-        playersRecycler = rootView.findViewById(R.id.players_recycler);
-        event_title = rootView.findViewById(R.id.event_title);
-        event_time = rootView.findViewById(R.id.event_time);
-        event_description = rootView.findViewById(R.id.event_description);
-        event_location = rootView.findViewById(R.id.event_location);
-        event_address = rootView.findViewById(R.id.event_address);
-        event_creator_name = rootView.findViewById(R.id.creator_name);
-        event_creator_photo = rootView.findViewById(R.id.creator_img);
-        event_payment = rootView.findViewById(R.id.payment_required);
-        progressBar = rootView.findViewById(R.id.player_progressbar);
-        progressBar.getIndeterminateDrawable().setColorFilter(ContextCompat.getColor(mContext, R.color.colorPrimary),
-                PorterDuff.Mode.SRC_IN);
-
-
-        // on-click
-        rootView.findViewById(R.id.btn_attendees).setOnClickListener(this);
         // setup
         calendar = Calendar.getInstance();
         playerList = new ArrayList<>();
         playerListIds = new ArrayList<>();
 
         setupPlayersRecycler();
-        setupEventDetails();
-        fetchCreator();
+        updateEvent(mEvent);
+        fetchOrganizer();
         fetchPlayers();
 
         return rootView;
     }
 
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        mContext = context;
-    }
-
     public void setupPlayersRecycler(){
+        if (getActivity() == null)
+            return;
+
         LinearLayoutManager layoutManager
-                = new LinearLayoutManager(mContext, LinearLayoutManager.HORIZONTAL, false);
+                = new LinearLayoutManager(getActivity(), LinearLayoutManager.HORIZONTAL, false);
         playersRecycler.setLayoutManager(layoutManager);
         playersRecycler.hasFixedSize();
+
         // adapter
-        playersAdapter = new PlayersAdapter(mContext, playerList);
+        playersAdapter = new PlayersAdapter(getActivity(), playerList);
         playersAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {
                 super.onItemRangeInserted(positionStart, itemCount);
+                viewAttendees.setEnabled(true);
                 progressBar.setVisibility(View.GONE);
+
             }
         });
+
         playersRecycler.setAdapter(playersAdapter);
     }
 
     public void updateEvent(Event event){
-        description = event.getInfo();
-        title = event.name;
-        place = event.getPlace();
-        city = event.getCity();
-        state = event.getState();
-        payment_required = event.paymentRequired;
-        time = event.getStartTime();
-        creator_id = event.getOwner();
-        type = event.getType();
-        price = event.getAmount();
-        setupEventDetails();
-    }
+        mEvent = event;
 
-    public void setupEventDetails(){
-        // event
-        if (description != null)
-            if (description.isEmpty())
-                event_description.setText(getString(R.string.none));
-            else
-                event_description.setText(description);
-
-        if (title != null)
-            event_title.setText(title.concat(" ").concat("(").concat(type)
+        // title
+        if (mEvent.getName() != null)
+            event_title.setText(mEvent.getName().concat(" ").concat("(").concat(mEvent.getType())
                     .concat(")"));
 
-        // location
-        if (place != null && !place.isEmpty()){
-            event_location.setText(place);
-        } else {
-            event_location.setVisibility(View.GONE);
-        }
+        // description
+        final String description = (mEvent.getInfo() != null && !mEvent.getInfo().isEmpty()) ?
+                mEvent.getInfo() : getString(R.string.none);
+        event_description.setText(description);
 
-        String address = city;
-        if (state != null)
-            address = address.concat(", ").concat(state);
-        event_address.setText(address);
+        // place
+        if (mEvent.getPlace() != null && !mEvent.getPlace().isEmpty())
+            event_location.setText(mEvent.getPlace());
+        else
+            event_location.setVisibility(View.GONE);
+
+        // location
+        String location = "";
+        if (mEvent.getCity() != null)
+            location = mEvent.getCity();
+
+        if (mEvent.getState() != null)
+            location = location.concat(", ").concat(mEvent.getState());
+        event_city.setText(location);
 
         // payment
-        if (payment_required) {
-            event_payment.setText(String.format(Locale.getDefault(),"%.2f", price));
+        if (mEvent.paymentRequired) {
+            event_payment.setText(String.format(Locale.getDefault(),"%.2f", mEvent.getAmount()));
             event_payment.setVisibility(View.VISIBLE);
+        } else {
+            event_payment.setText("Free");
         }
 
-        // Date
-        formatTime(time);
-        String time = mFormatter.format(calendar.getTime());
+        // date, time
+        formatTime(mEvent.getStartTime());
+        String date = dateFormatter.format(calendar.getTime());
+        String time = timeFormatter.format(calendar.getTime());
+        event_date.setText(date);
         event_time.setText(time);
     }
 
@@ -265,119 +212,148 @@ public class EventDetailsFragment extends Fragment implements View.OnClickListen
         calendar.set(Calendar.MILLISECOND, 0);
     }
 
-    public void fetchCreator(){
-        databaseRef.child(REF_PLAYERS).child(creator_id).addListenerForSingleValueEvent(new ValueEventListener() {
+    public void fetchOrganizer(){
+        final String organizerId = mEvent.getOwner();
+        loadOrganizerPhoto();
+
+        databaseRef.child(REF_PLAYERS).child(organizerId).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                     final Player creator = dataSnapshot.getValue(Player.class);
+
                     if (isAdded()) {
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                event_creator_name.setText(creator.getName());
-                                if (creator.getPhotoUrl() != null && !creator.getPhotoUrl().isEmpty())
-                                    GeneralHelpers.glideImage(mContext, event_creator_photo,
-                                            creator.getPhotoUrl(), R.drawable.ic_default_photo);
-                                creator.setPid(creator_id);
-                                playerListIds.add(creator_id);
-                                playerList.add(creator);
-                                playersAdapter.notifyItemInserted(playerList.size() - 1);
-                            }
-                        });
+                        if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (creator == null) return;
+
+                                    if (creator.getName() != null)
+                                        event_creator_name.setText("Organizer: ".concat(creator.getName()));
+                                }
+                            });
+                        }
                     }
                 }
             }
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
+    }
+
+    void loadOrganizerPhoto(){
+        final Context mContext = getActivity();
+        FirebaseStorage.getInstance().getReference()
+                .child("images/player").child(mEvent.getOwner()).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+                if (uri != null){
+                    PhotoHelper.glideImage(mContext, event_creator_photo, uri.toString(), R.drawable.ic_default_photo);
+                }
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) { }
         });
     }
 
     public void fetchPlayers(){
+        final String eventId = mEvent.getEid();
         databaseRef.child("eventUsers").child(eventId).addChildEventListener(new ChildEventListener() {
             @Override
-            public void onChildAdded(DataSnapshot child, String s) {
-                if (child.exists() && child.getValue() != null)
-                            if (child.getValue(Boolean.class))
-                                if (!child.getKey().equals(creator_id))
-                                    addPlayer(child.getKey());
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot child, String s) {
-                if (child.exists() && child.getValue() != null)
-                    if (child.getValue(Boolean.class)) {
-                        if (!child.getKey().equals(creator_id)) {
-                            addPlayer(child.getKey());
-                        }
-                    }else {
-                    // user left
-                        final int index = playerListIds.indexOf(child.getKey());
-                        if (index > -1){
-                            playerList.remove(index);
-                            playerListIds.remove(index);
-                            if (isAdded()){
-                                getActivity().runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        playersAdapter.notifyItemRemoved(index);
-                                    }
-                                });
-                            }
-                        }
+            public void onChildAdded(@NonNull DataSnapshot child, String s) {
+                if (child.exists() && child.getValue() != null){
+                    final String userId = child.getKey();
+                    final boolean didJoin = (boolean) child.getValue();
+                    if (didJoin && userId != null){
+                        addPlayer(userId);
                     }
+                }
             }
 
             @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {}
+            public void onChildChanged(@NonNull DataSnapshot child, String s) {
+                if (child.exists() && child.getValue() != null){
+                    final String userId = child.getKey();
+                    final boolean didJoin = (boolean) child.getValue();
+                    if (userId == null) return;
+
+                    if (didJoin){
+                        // add player
+                        addPlayer(userId);
+                    } else {
+                        // user left
+                        removePlayer(userId);
+                    }
+                }
+            }
 
             @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {}
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {}
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, String s) {}
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 
-    public void addPlayer(final String pid){
-        databaseRef.child(REF_PLAYERS).child(pid).addListenerForSingleValueEvent(new ValueEventListener() {
+    public void addPlayer(@NonNull final String uid){
+        databaseRef.child(REF_PLAYERS).child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                final Player player = dataSnapshot.getValue(Player.class);
-                player.setPid(pid);
-                playerListIds.add(pid);
-                playerList.add(player);
-                if (isAdded()) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                if (!dataSnapshot.exists() || dataSnapshot.getValue() == null)
+                    return;
+
+                Player player = dataSnapshot.getValue(Player.class);
+                if (player != null) {
+                    player.setUid(uid);
+                    playerListIds.add(uid);
+                    playerList.add(player);
+
+                    if (isAdded()) {
+                        if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
+                            getActivity().runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    playersAdapter.notifyItemInserted(playerList.size() - 1);
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
+        });
+    }
+
+    private void removePlayer(@NonNull String uid){
+        final int index = playerListIds.indexOf(uid);
+        if (index > -1){
+            playerList.remove(index);
+            playerListIds.remove(index);
+            if (isAdded()) {
+                if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
                     getActivity().runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            playersAdapter.notifyItemInserted(playerList.size() - 1);
+                            playersAdapter.notifyItemRemoved(index);
                         }
                     });
                 }
             }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
+        }
     }
 
+    public void updatePlayerCount(int playerCount){
+        // hide players progressbar if there are no players
+        if (playerCount == 0 && progressBar.isShown())
+            progressBar.setVisibility(View.GONE);
 
-    @Override
-    public void onClick(View view) {
-        switch (view.getId()){
-            case R.id.btn_attendees:
-                Intent intent = new Intent(mContext, AttendeesActivity.class);
-                if (playerList != null && !playerList.isEmpty()){
-                    intent.putParcelableArrayListExtra(AttendeesActivity.EXTRA_PLAYERS,
-                            playerList);
-                }
-                startActivity(intent);
-                ((EventDetailsActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right,
-                        R.anim.anim_slide_out_left);
-                break;
-        }
+        numOfPlayers.setText(String.valueOf(playerCount).concat( " attending"));
     }
 }

@@ -2,7 +2,10 @@ package io.renderapps.balizinha.adapter;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,13 +13,18 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 
+import com.bumptech.glide.Glide;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
+
 import java.util.ArrayList;
 
 import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.UserProfileActivity;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.GeneralHelpers;
+import io.renderapps.balizinha.util.PhotoHelper;
 
 /**
  * Created by joel
@@ -45,33 +53,54 @@ public class PlayersAdapter extends RecyclerView.Adapter<PlayersAdapter.ViewHold
         this.mContext = context;
     }
 
+    @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_player, parent,
                 false);
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
         final Player player = players.get(position);
 
         holder.name.setText(player.getName());
-        if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty()){
-            GeneralHelpers.glideImage(mContext, holder.photo, player.getPhotoUrl(),
-                    R.drawable.ic_default_photo);
-
-        } else
-            holder.photo.setImageResource(R.drawable.ic_default_photo);
+//        if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty()){
+//            GeneralHelpers.glideImage(mContext, holder.photo, player.getPhotoUrl(),
+//                    R.drawable.ic_default_photo);
+//
+//        } else
+//            holder.photo.setImageResource(R.drawable.ic_default_photo);
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent userProfileIntent = new Intent(mContext, UserProfileActivity.class);
-                userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getPid());
+                userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getUid());
                 mContext.startActivity(userProfileIntent);
                 ((EventDetailsActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right,
                         R.anim.anim_slide_out_left);
+            }
+        });
+
+        FirebaseStorage.getInstance().getReference()
+                .child("images/player").child(player.getUid()).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+                if (uri != null){
+                    PhotoHelper.glideImage(mContext, holder.photo, uri.toString(), R.drawable.ic_default_photo);
+                } else {
+                    Glide.with(mContext).clear(holder.photo);
+                    holder.photo.setImageResource(R.drawable.ic_default_photo);
+                }
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                // Handle any errors
+                Glide.with(mContext).clear(holder.photo);
+                holder.photo.setImageResource(R.drawable.ic_default_photo);
             }
         });
     }

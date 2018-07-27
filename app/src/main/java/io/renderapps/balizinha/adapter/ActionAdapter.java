@@ -2,7 +2,7 @@ package io.renderapps.balizinha.adapter;
 
 import android.content.Context;
 import android.content.Intent;
-import android.support.v7.app.AppCompatActivity;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -13,8 +13,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.request.RequestOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -35,8 +33,7 @@ import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.activity.UserProfileActivity;
 import io.renderapps.balizinha.model.Action;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.CircleTransform;
-import io.renderapps.balizinha.util.GeneralHelpers;
+import io.renderapps.balizinha.util.PhotoHelper;
 
 import static io.renderapps.balizinha.model.Action.ACTION_CHAT;
 import static io.renderapps.balizinha.model.Action.ACTION_CREATE;
@@ -85,15 +82,16 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
         this.databaseRef = FirebaseDatabase.getInstance().getReference();
     }
 
+    @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_message, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         final Action action = messages.get(position);
         final Date date = new Date((long)action.getCreatedAt() * 1000);
         switch (action.getType()){
@@ -190,13 +188,18 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
             holder.username.setText(player.getName());
         if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty())
             loadImage(holder.photo, player.getPhotoUrl());
+        else {
+            Glide.with(mContext).clear(holder.photo);
+            holder.photo.setImageResource(R.drawable.ic_default_photo);
+        }
+
 
         // to go user profile on photo click
         holder.photo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent userProfileIntent = new Intent(mContext, UserProfileActivity.class);
-                userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getPid());
+                userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getUid());
                 mContext.startActivity(userProfileIntent);
                 ((EventDetailsActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
 
@@ -207,17 +210,19 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
     private void fetchUser(final ViewHolder holder, final String uid){
         databaseRef.child(REF_PLAYERS).child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                     final Player player = dataSnapshot.getValue(Player.class);
-                    player.setPid(uid);
+                    if (player == null) return;
+
+                    player.setUid(uid);
                     currentUsers.put(uid, player);
                     showMessage(holder, player);
                 }
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 
@@ -227,20 +232,6 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
     }
 
     private void loadImage(ImageView iv, String photoUrl){
-        GeneralHelpers.glideImage(mContext, iv, photoUrl, R.drawable.ic_default_photo);
-
-//        RequestOptions myOptions = new RequestOptions()
-//                .fitCenter()
-//                .diskCacheStrategy(DiskCacheStrategy.ALL)
-//                .transform(new CircleTransform(mContext))
-//                .placeholder(R.drawable.ic_default_photo);
-//        // load photo
-//        if (mContext != null && !((AppCompatActivity)mContext).isFinishing()) {
-//            Glide.with(mContext)
-//                    .asBitmap()
-//                    .apply(myOptions)
-//                    .load(photoUrl)
-//                    .into(iv);
-//        }
+        PhotoHelper.glideImage(mContext, iv, photoUrl, R.drawable.ic_default_photo);
     }
 }

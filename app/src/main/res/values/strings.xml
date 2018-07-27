@@ -110,5 +110,9 @@
     <!-- Dialog -->
     <string name="cancel">Cancel</string>
     <string name="continue_button">Continue</string>
+    <string name="status_joining">Joining game...</string>
+    <string name="status_processing_payment">Processing payment...</string>
+    <string name="leave_game">Leave Game</string>
+    <string name="join_game">Join Game</string>
 
 </resources>

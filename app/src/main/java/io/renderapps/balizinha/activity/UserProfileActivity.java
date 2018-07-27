@@ -1,5 +1,8 @@
 package io.renderapps.balizinha.activity;
 
+import android.content.Context;
+import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -7,17 +10,17 @@ import android.view.MenuItem;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.request.RequestOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.storage.FirebaseStorage;
 
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.CircleTransform;
+import io.renderapps.balizinha.util.PhotoHelper;
 
 import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
 
@@ -57,6 +60,7 @@ public class UserProfileActivity extends AppCompatActivity {
         description = findViewById(R.id.user_description);
 
         loadUserProfile();
+        loadPhoto();
     }
 
     @Override
@@ -73,6 +77,10 @@ public class UserProfileActivity extends AppCompatActivity {
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                     final Player player = dataSnapshot.getValue(Player.class);
+                    if (player == null) {
+                        onBackPressed();
+                        return;
+                    }
 
                     if (player.getName() != null && !player.getName().isEmpty())
                         name.setText(player.getName());
@@ -88,10 +96,6 @@ public class UserProfileActivity extends AppCompatActivity {
                         description.setText(player.getInfo());
                     else
                         description.setText("");
-
-                    // photo
-                    if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty())
-                        loadPhoto(player.getPhotoUrl());
                 }
             }
 
@@ -100,19 +104,22 @@ public class UserProfileActivity extends AppCompatActivity {
         });
     }
 
-    private void loadPhoto(String url){
-        RequestOptions myOptions = new RequestOptions()
-                .fitCenter()
-                .diskCacheStrategy(DiskCacheStrategy.ALL)
-                .transform(new CircleTransform(this))
-                .placeholder(R.drawable.ic_default_photo);
-
-        // load photo
-        Glide.with(this)
-                .asBitmap()
-                .apply(myOptions)
-                .load(url)
-                .into(photo);
+    void loadPhoto(){
+        final Context mContext = this;
+        FirebaseStorage.getInstance().getReference()
+                .child("images/player").child(uid).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+                if (uri != null){
+                    PhotoHelper.glideImage(mContext, photo, uri.toString(), R.drawable.ic_default_photo);
+                }
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                // Handle any errors
+            }
+        });
     }
 
     @Override

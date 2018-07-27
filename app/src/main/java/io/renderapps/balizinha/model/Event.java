@@ -1,12 +1,15 @@
 package io.renderapps.balizinha.model;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 /**
  * Created by joel on 12/13/17.
  */
 
-public class Event {
+public class Event implements Parcelable {
 
-    public String eid; // event id
+    public String eid;
     public String photoUrl;
     public String city;
     public String info;
@@ -25,15 +28,86 @@ public class Event {
     public boolean paymentRequired;
     public boolean active;
 
-    public Event() {
-        // required empty constructor
+    public Event() { }
+
+
+    /**************************************************************************************************
+     * Parcelable
+     *************************************************************************************************/
+
+    public static final Parcelable.Creator CREATOR = new Parcelable.Creator() {
+        public Event createFromParcel(Parcel in) {
+            return new Event(in);
+        }
+
+        public Event[] newArray(int size) {
+            return new Event[size];
+        }
+    };
+
+    private Event(Parcel in){
+
+        this.eid = in.readString();
+        this.photoUrl = in.readString();
+        this.city = in.readString();
+        this.info = in.readString();
+        this.name = in.readString();
+        this.owner = in.readString();
+        this.type = in.readString();
+        this.state = in.readString();
+        this.place = in.readString();
+
+
+        this.lat = in.readDouble();
+        this.lon = in.readDouble();
+        this.amount = in.readDouble();
+
+        this.startTime = in.readLong();
+        this.endTime = in.readLong();
+        this.createdAt = in.readLong();
+
+        this.maxPlayers = in.readInt();
+
+        // boolean read as int, 1 == true, 0 == false
+        this.paymentRequired = in.readInt() != 0;
+        this.active = in.readInt() != 0;
     }
 
-//    public Event() {
-//        this.email = email;
-//        this.createdAt = System.currentTimeMillis();
-//    }
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.eid);
+        dest.writeString(this.photoUrl);
+        dest.writeString(this.city);
+        dest.writeString(this.info);
+        dest.writeString(this.name);
+        dest.writeString(this.owner);
+        dest.writeString(this.type);
+        dest.writeString(this.state);
+        dest.writeString(this.place);
 
+        dest.writeDouble(this.lat);
+        dest.writeDouble(this.lon);
+        dest.writeDouble(this.amount);
+
+        dest.writeLong(this.startTime);
+        dest.writeLong(this.endTime);
+        dest.writeLong(this.createdAt);
+
+        dest.writeInt(this.maxPlayers);
+
+        // boolean written as int, 1 == true, 0 == false
+        dest.writeInt(paymentRequired ? 1 : 0);
+        dest.writeInt(active ? 1 : 0);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    /**************************************************************************************************
+     * Setters & Getters
+     *************************************************************************************************/
 
     public String getPhotoUrl() {
         return photoUrl;
@@ -104,7 +178,6 @@ public class Event {
     }
 
     // setters
-
 
     public void setPhotoUrl(String photoUrl) {
         this.photoUrl = photoUrl;

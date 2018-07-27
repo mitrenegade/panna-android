@@ -1,16 +1,15 @@
 package io.renderapps.balizinha.activity;
 
-import android.Manifest;
+import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Handler;
-import android.provider.MediaStore;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -27,7 +26,14 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -38,50 +44,60 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
-import com.google.firebase.storage.OnProgressListener;
-import com.google.firebase.storage.StorageReference;
-import com.google.firebase.storage.UploadTask;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import br.com.simplepass.loading_button_lib.customViews.CircularProgressButton;
+import butterknife.BindView;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
 import io.renderapps.balizinha.service.FirebaseService;
 import io.renderapps.balizinha.util.CircleTransform;
-import io.renderapps.balizinha.util.GeneralHelpers;
+import io.renderapps.balizinha.util.PhotoHelper;
 
+import static io.renderapps.balizinha.util.Constants.PERMISSION_CAMERA;
+import static io.renderapps.balizinha.util.Constants.PERMISSION_GALLERY;
 import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
+import static io.renderapps.balizinha.util.Constants.REQUEST_CAMERA;
+import static io.renderapps.balizinha.util.Constants.REQUEST_IMAGE;
 
 /**
  * Class creates user profile or updates
  */
 public class SetupProfileActivity extends AppCompatActivity implements View.OnClickListener {
 
-    // views
-    private ImageView profilePhoto;
-    private EditText nameField;
-    private EditText locationField;
-    private EditText descriptionField;
-    private CircularProgressButton saveButton;
+    private final static int MEGABYTE = 1000000;
 
-    // update views
+    // views
+    @BindView(R.id.user_photo) ImageView profilePhoto;
+    @BindView(R.id.user_name) EditText nameField;
+    @BindView(R.id.user_city) EditText locationField;
+    @BindView(R.id.user_description) EditText descriptionField;
+
+    // on-click
+    @OnClick(R.id.user_photo) void onUploadPhoto(){
+        uploadPhoto();
+    }
+
+    // optional views
     private ProgressBar updateProgressbar;
     private FrameLayout progressView;
+    private CircularProgressButton saveButton;
 
     // properties
     public static String EXTRA_PROFILE_UPDATE = "update_account"; // indicates profile update
-    private int REQUEST_CAMERA = 100, SELECT_FILE = 101;
-    private int PERMISSION_CAMERA = 102, PERMISSION_GALLERY = 103;
 
-    private Context mContext;
     private boolean isUpdating = false;
-    private boolean didSetuPhoto = false;
+    private boolean didSetPhoto = false;
+    private boolean allowBackNavigation = true;
+
     private Player player;
     private byte[] mBytes;
+    private PhotoHelper photoHelper;
 
     // firebase
     private FirebaseUser firebaseUser;
@@ -90,7 +106,6 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        mContext = this;
 
         // bundle
         Bundle extras = getIntent().getExtras();
@@ -98,40 +113,19 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
             isUpdating = extras.getBoolean(EXTRA_PROFILE_UPDATE);
 
         // layout based on setup or update
-        if (isUpdating)
-            setContentView(R.layout.activity_update_profile);
-        else
-            setContentView(R.layout.activity_setup_profile);
+        int view = (isUpdating) ? R.layout.activity_update_profile : R.layout.activity_setup_profile;
+        setContentView(view);
+        ButterKnife.bind(this);
 
         // firebase
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         databaseRef = FirebaseDatabase.getInstance().getReference();
         databaseRef.child(REF_PLAYERS).child(firebaseUser.getUid()).keepSynced(true);
 
-        // views
-        profilePhoto = findViewById(R.id.user_photo);
-        profilePhoto.setOnClickListener(this);
-        nameField = findViewById(R.id.user_name);
-        locationField = findViewById(R.id.user_city);
-        descriptionField = findViewById(R.id.user_description);
-
-        if (isUpdating) {
-            updateProgressbar = findViewById(R.id.update_progressbar);
-            progressView = findViewById(R.id.progress_view);
-            Toolbar toolbar = findViewById(R.id.profile_toolbar);
-            setSupportActionBar(toolbar);
-            getSupportActionBar().setTitle(R.string.profile);
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        } else {
-            saveButton = findViewById(R.id.save_button);
-            saveButton.setOnClickListener(this);
-        }
-
-        if (isUpdating) {
-            // hide keyboard
-            this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
-            fetchAccount();
-        }
+        if (isUpdating)
+            setupUpdateProfile();
+        else
+            setupNewProfile();
     }
 
     @Override
@@ -147,7 +141,8 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
                 onBackPressed();
                 break;
             case R.id.save:
-                onUpdate();
+                if (!updateProgressbar.isShown())
+                    onUpdate();
                 break;
         }
         return super.onOptionsItemSelected(item);
@@ -155,73 +150,148 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
 
     @Override
     public void onClick(View view) {
-        switch(view.getId()){
-            case R.id.user_photo:
-                uploadPhoto();
-                break;
-            case R.id.save_button:
-                if (progressView != null) {
-                    if (!progressView.isShown())
-                        onSave();
-                } else
+        if (view.getId() == R.id.save_button){
+            if (progressView != null) {
+                if (!progressView.isShown()) {
                     onSave();
-                break;
+                    return;
+                }
+            }
+            onSave();
         }
     }
 
-    public void onSave(){
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (saveButton != null)
+            saveButton.dispose();
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (!isUpdating) return;
+        // prevent back navigation when profile is updating
+        if (!allowBackNavigation) return;
+
+        super.onBackPressed();
+        finish();
+        overridePendingTransition(R.anim.anim_slide_in_left, R.anim.anim_slide_out_right);
+    }
+
+
+    /**************************************************************************************************
+     * Update
+     *************************************************************************************************/
+
+    void setupUpdateProfile(){
+        updateProgressbar = findViewById(R.id.update_progressbar);
+        progressView = findViewById(R.id.progress_view);
+
+        Toolbar toolbar = findViewById(R.id.profile_toolbar);
+        setSupportActionBar(toolbar);
+
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle(R.string.profile);
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+
+        // hide keyboard
+        this.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        fetchAccount();
+        loadPhoto();
+    }
+
+    public void onUpdate(){
+        final Context mContext = this;
         enableEditing(false);
+
+        if (!validForm())
+            enableEditing(true);
+        else {
+            updateProgressbar.setVisibility(View.VISIBLE);
+            databaseRef.updateChildren(createChildUpdates()).addOnCompleteListener(new OnCompleteListener<Void>() {
+                @Override
+                public void onComplete(@NonNull Task<Void> task) {
+                    if (task.isSuccessful()){
+                        if (mBytes != null && mBytes.length > 0)
+                            FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
+                                    mBytes);
+                        Toast.makeText(mContext, "Profile updated", Toast.LENGTH_SHORT).show();
+                        allowBackNavigation = true;
+                        onBackPressed();
+                    } else {
+                        Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
+                        enableEditing(true);
+                        updateProgressbar.setVisibility(View.GONE);
+                    }
+                }
+            });
+        }
+    }
+
+    /**************************************************************************************************
+     * Setup Profile
+     *************************************************************************************************/
+
+
+    void setupNewProfile(){
+        saveButton = findViewById(R.id.save_button);
+        saveButton.setOnClickListener(this);
+    }
+
+    public void onSave(){
+        final Context mContext = this;
+        enableEditing(false);
+
         if (!validForm()){
             enableEditing(true);
         } else {
-            if (!didSetuPhoto) {
+            if (!didSetPhoto) {
                 showDialog();
             } else {
                 saveButton.startAnimation();
                 databaseRef.updateChildren(createChildUpdates())
                         .addOnCompleteListener(new OnCompleteListener<Void>() {
-                    @Override
-                    public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()) {
-                            if (mBytes != null && mBytes.length > 0)
-                                FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
-                                        mBytes);
-                            launchMainActivity();
-                        } else {
-                            Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
-                            enableEditing(true);
-                            saveButton.revertAnimation();
-                        }
-                    }
-                });
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                if (task.isSuccessful()) {
+                                    if (mBytes != null && mBytes.length > 0)
+                                        FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
+                                                mBytes);
+                                    launchMainActivity();
+                                } else {
+                                    Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
+                                    enableEditing(true);
+                                    saveButton.revertAnimation();
+                                }
+                            }
+                        });
             }
         }
     }
 
-    public void onUpdate(){
-        enableEditing(false);
-        if (!validForm())
-            enableEditing(true);
-        else {
-            updateProgressbar.setVisibility(View.VISIBLE);
-            databaseRef.updateChildren(createChildUpdates())
-                    .addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            if (task.isSuccessful()){
-                                if (mBytes != null && mBytes.length > 0)
-                                    FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
-                                            mBytes);
-                                Toast.makeText(mContext, "Profile updated", Toast.LENGTH_LONG).show();
-                                onBackPressed();
-                            } else {
-                                Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
-                                enableEditing(true);
-                                updateProgressbar.setVisibility(View.GONE);
-                            }
-                        }
-                    });
-        }
+    /**************************************************************************************************
+     * Action handlers
+     *************************************************************************************************/
+
+    public boolean validForm() {
+        String name = nameField.getText().toString().trim();
+        if (TextUtils.isEmpty(name)) {
+            nameField.setError("Required");
+            return false;
+        } else
+            nameField.setError(null);
+        return true;
+    }
+
+    public void enableEditing(boolean isEnabled){
+        nameField.setEnabled(isEnabled);
+        locationField.setEnabled(isEnabled);
+        descriptionField.setEnabled(isEnabled);
+        profilePhoto.setEnabled(isEnabled);
+
+        allowBackNavigation = isEnabled;
     }
 
     private Map<String, Object> createChildUpdates(){
@@ -235,6 +305,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                 .setDisplayName(name).build();
         firebaseUser.updateProfile(profileUpdates);
+
         childUpdates.put("/players/" + uid + "/name", name);
         if (!city.isEmpty())
             childUpdates.put("/players/" + uid + "/city", city);
@@ -244,27 +315,10 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         return childUpdates;
     }
 
-    public boolean validForm() {
-        String name = nameField.getText().toString().trim();
-        if (TextUtils.isEmpty(name)) {
-            nameField.setError("Required");
-            return false;
-        } else
-            nameField.setError(null);
-
-        return true;
-    }
-
-    public void enableEditing(boolean isEnabled){
-        nameField.setEnabled(isEnabled);
-        locationField.setEnabled(isEnabled);
-        descriptionField.setEnabled(isEnabled);
-        profilePhoto.setEnabled(isEnabled);
-    }
-
     public void launchMainActivity(){
-        Bitmap check = GeneralHelpers.getBitmapFromVectorDrawable(mContext, R.drawable.ic_check);
-        saveButton.doneLoadingAnimation(android.R.color.white, check);
+        Bitmap bm = BitmapFactory.decodeResource(getResources(), R.drawable.ic_check);
+        saveButton.doneLoadingAnimation(android.R.color.white, bm);
+
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -272,13 +326,6 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
                 finish();
             }
         }, 1000);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (saveButton != null)
-            saveButton.dispose();
     }
 
     /******************************************************************************
@@ -291,35 +338,148 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
             public void onDataChange(DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                     player = dataSnapshot.getValue(Player.class);
-                    if (player.getName() != null) {
-                        nameField.setText(player.getName());
-                        nameField.setSelection(nameField.getText().length());
+                    if (player == null)
+                        onBackPressed();
+
+                    if (!isDestroyed() && !isFinishing()){
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (player.getName() != null) {
+                                    nameField.setText(player.getName());
+                                    nameField.setSelection(nameField.getText().length());
+                                }
+                                if (player.getInfo() != null)
+                                    descriptionField.setText(player.getInfo());
+                                if (player.getCity() != null)
+                                    locationField.setText(player.getCity());
+
+                                // hide progress view
+                                progressView.setVisibility(View.GONE);
+
+                                // load picture
+//                                if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty()) {
+//                                    GeneralHelpers.glideImage(mContext, profilePhoto, player.getPhotoUrl(),
+//                                            R.drawable.ic_default_photo);
+//                                }
+                            }
+                        });
                     }
-                    if (player.getInfo() != null)
-                        descriptionField.setText(player.getInfo());
-                    if (player.getCity() != null)
-                        locationField.setText(player.getCity());
-
-                    // hide progress view
-                    progressView.setVisibility(View.GONE);
-
-                    // load picture
-                    if (player.getPhotoUrl() != null)
-                        GeneralHelpers.glideImage(mContext, profilePhoto, player.getPhotoUrl(),
-                                R.drawable.ic_default_photo);
                 }
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(DatabaseError databaseError) {}
+        });
+    }
 
+    void loadPhoto(){
+        final Context mContext = this;
+        FirebaseStorage.getInstance().getReference()
+                .child("images/player").child(firebaseUser.getUid()).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+                if (uri != null){
+                    PhotoHelper.glideImage(mContext, profilePhoto, uri.toString(), R.drawable.ic_default_photo);
+                }
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                // Handle any errors
             }
         });
     }
 
     /******************************************************************************
-     * Add photo handlers
+     * Photo handlers
      *****************************************************************************/
+
+    void uploadPhoto(){
+        if (photoHelper != null)
+            photoHelper.showCaptureOptions();
+        else
+            photoHelper = new PhotoHelper(this);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            switch (requestCode){
+                case PERMISSION_CAMERA:
+                    photoHelper.cameraIntent();
+                    break;
+                case PERMISSION_GALLERY:
+                    photoHelper.galleryIntent();
+                    break;
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == Activity.RESULT_OK){
+            switch (requestCode){
+                case REQUEST_IMAGE:
+                    photoHelper.onSelectFromGalleryResult(data);
+                    break;
+                case REQUEST_CAMERA:
+                    photoHelper.onCaptureImageResult(data);
+                    break;
+            }
+        }
+    }
+
+    public void onAddPhoto(byte[] bytes){
+        final Context mContext = this;
+
+        // load photo, resize under 1MB if possible
+        RequestOptions myOptions = new RequestOptions()
+                .centerInside()
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .override(500, 500);
+
+        if (!isDestroyed() && !isFinishing()) {
+            Glide.with(this)
+                    .asBitmap()
+                    .apply(myOptions)
+                    .load(bytes)
+                    .into(new SimpleTarget<Bitmap>() {
+                        @Override
+                        public void onResourceReady(Bitmap resource, Transition<? super Bitmap> transition) {
+                            if (resource.getByteCount() >= MEGABYTE){
+                                Toast.makeText(mContext, "Image size is too large, please upload a smaller one.",
+                                        Toast.LENGTH_LONG).show();
+                            } else {
+                                RequestOptions uploadOptions = new RequestOptions()
+                                        .fitCenter()
+                                        .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                                        .transform(new CircleTransform(mContext));
+
+                                Glide.with(mContext)
+                                        .load(resource)
+                                        .apply(uploadOptions)
+                                        .into(profilePhoto);
+
+
+                                byte[] res = getImageAsBytes(resource);
+                                if (res != null){
+                                    mBytes = res;
+                                    didSetPhoto = true;
+                                }
+                            }
+                        }
+                    });
+        }
+    }
+
+    byte[] getImageAsBytes(Bitmap bmp){
+        ByteArrayOutputStream bao = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, bao);
+        return bao.toByteArray();
+    }
 
     public void showDialog(){
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -340,152 +500,11 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
-                        didSetuPhoto = true;
+                        didSetPhoto = true;
                         onSave();
                     }
                 });
 
         builder.create().show();
-    }
-
-    public void uploadPhoto() {
-        if (mContext != null) {
-            final CharSequence[] items = {"Take photo", "Choose from gallery"};
-            AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-            builder.setTitle("Add Profile Photo");
-            builder.setItems(items, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int item) {
-                    if (items[item].equals("Take photo")) {
-                        cameraIntent();
-                    } else if (items[item].equals("Choose from gallery")) {
-                        galleryIntent();
-                    }
-                }
-            });
-            builder.show();
-        }
-    }
-
-    private void galleryIntent() {
-        if (checkGalleryPermission()) {
-            Intent intent = new Intent();
-            intent.setType("image/*");
-            intent.setAction(Intent.ACTION_GET_CONTENT);//
-            startActivityForResult(Intent.createChooser(intent, "Select photo"), SELECT_FILE);
-        }
-    }
-
-    private void cameraIntent() {
-        if (checkCameraPermission()) {
-            Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            startActivityForResult(intent, REQUEST_CAMERA);
-        }
-    }
-
-    private boolean checkCameraPermission() {
-        if (ContextCompat.checkSelfPermission(mContext,
-                Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.CAMERA},
-                    PERMISSION_CAMERA);
-            return false;
-        }
-        return true;
-    }
-
-    private boolean checkGalleryPermission() {
-        if (ContextCompat.checkSelfPermission(mContext,
-                Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            // No explanation needed, we can request the permission.
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                    PERMISSION_GALLERY);
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String permissions[], @NonNull int[] grantResults) {
-
-        if (requestCode == PERMISSION_CAMERA) {
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // permission was granted
-                cameraIntent();
-            }
-        } else if (requestCode == PERMISSION_GALLERY){
-            if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // permission was granted
-                galleryIntent();
-            }
-        }
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == RESULT_OK) {
-            if (requestCode == SELECT_FILE)
-                onSelectFromGalleryResult(data);
-            else if (requestCode == REQUEST_CAMERA)
-                onCaptureImageResult(data);
-        } else {
-            Toast.makeText(mContext, "Cancelled", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void onSelectFromGalleryResult(Intent data) {
-        if (data != null) {
-            final Bitmap bm;
-            try {
-                bm = MediaStore.Images.Media.getBitmap(getContentResolver(), data.getData());
-                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-                bm.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-                byte[] byteFormat = bytes.toByteArray();
-                taskComplete(byteFormat);
-            } catch (IOException e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Failed to upload photo", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    public void onCaptureImageResult(Intent data) {
-        if (data.getExtras() != null) {
-            final Bitmap thumbnail = (Bitmap) data.getExtras().get("data");
-            if (thumbnail != null) {
-                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-                thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-                byte[] byteFormat = bytes.toByteArray();
-                taskComplete(byteFormat);
-                return;
-            }
-        }
-        Toast.makeText(this, "Failed to upload photo", Toast.LENGTH_SHORT).show();
-    }
-
-    void taskComplete(byte[] bytes){
-        mBytes = bytes;
-        didSetuPhoto = true;
-        int drawable = R.drawable.ic_add_photo;
-        if (isUpdating)
-            if (player != null && player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty())
-                drawable = R.drawable.ic_default_photo;
-
-        GeneralHelpers.glideImageWithBytes(this, profilePhoto, mBytes,
-                drawable);
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        finish();
-        overridePendingTransition(R.anim.anim_slide_in_left, R.anim.anim_slide_out_right);
     }
 }

@@ -2,6 +2,8 @@ package io.renderapps.balizinha.adapter;
 
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,18 +12,17 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.request.RequestOptions;
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.storage.FirebaseStorage;
 
 import java.util.List;
 
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.AttendeesActivity;
-import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.activity.UserProfileActivity;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.util.CircleTransform;
-import io.renderapps.balizinha.util.GeneralHelpers;
+import io.renderapps.balizinha.util.PhotoHelper;
 
 /**
  * Simple adapter to show list view of attending players
@@ -37,15 +38,16 @@ public class AttendeesAdapter extends RecyclerView.Adapter<AttendeesAdapter.View
         this.users = users;
     }
 
+    @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_listview_player,
                 parent, false);
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull final ViewHolder holder, int position) {
         final Player player = users.get(position);
         holder.name.setText(player.getName());
 
@@ -56,20 +58,12 @@ public class AttendeesAdapter extends RecyclerView.Adapter<AttendeesAdapter.View
             holder.city.setVisibility(View.GONE);
         }
 
-        // photo
-        if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty()){
-            GeneralHelpers.glideImage(mContext, holder.photo, player.getPhotoUrl(),
-                    R.drawable.ic_default_photo);
-        } else {
-            holder.photo.setImageResource(R.drawable.ic_default_photo);
-        }
-
         // on-click
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Intent userProfileIntent = new Intent(mContext, UserProfileActivity.class);
-                userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getPid());
+                userProfileIntent.putExtra(UserProfileActivity.USER_ID, player.getUid());
                 mContext.startActivity(userProfileIntent);
                 ((AttendeesActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right,
                         R.anim.anim_slide_out_left);
@@ -77,6 +71,25 @@ public class AttendeesAdapter extends RecyclerView.Adapter<AttendeesAdapter.View
             }
         });
 
+        FirebaseStorage.getInstance().getReference()
+                .child("images/player").child(player.getUid()).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
+            @Override
+            public void onSuccess(Uri uri) {
+                if (uri != null){
+                    PhotoHelper.glideImage(mContext, holder.photo, uri.toString(), R.drawable.ic_default_photo);
+                } else {
+                    Glide.with(mContext).clear(holder.photo);
+                    holder.photo.setImageResource(R.drawable.ic_default_photo);
+                }
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(@NonNull Exception exception) {
+                // Handle any errors
+                Glide.with(mContext).clear(holder.photo);
+                holder.photo.setImageResource(R.drawable.ic_default_photo);
+            }
+        });
     }
 
     @Override

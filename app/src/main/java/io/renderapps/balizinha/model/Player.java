@@ -5,13 +5,16 @@ import android.os.Parcelable;
 
 import java.util.Calendar;
 
+import io.renderapps.balizinha.R;
+import io.renderapps.balizinha.util.Constants;
+
 /**
  * Created by joel on 12/6/17.
  */
 
 public class Player implements Parcelable {
 
-    private String pid;
+    private String uid;
     private String email;
     private String name;
     private String photoUrl;
@@ -21,6 +24,7 @@ public class Player implements Parcelable {
     private String fcmToken;
     private String promotionId;
     private String os;
+    private String version;
     private boolean isOwner;
     private long createdAt;
 
@@ -33,6 +37,8 @@ public class Player implements Parcelable {
         this.city = "";
         this.email = email;
         this.createdAt = System.currentTimeMillis();
+        this.version = Constants.APP_VERSION;
+        this.os = Constants.OS_ANDROID;
     }
 
     // getters
@@ -72,12 +78,16 @@ public class Player implements Parcelable {
         return promotionId;
     }
 
-    public String getPid() {
-        return pid;
+    public String getUid() {
+        return uid;
     }
 
     public String getOs() {
         return os;
+    }
+
+    public String getVersion() {
+        return version;
     }
 
     // setters
@@ -118,12 +128,20 @@ public class Player implements Parcelable {
         this.promotionId = promotionId;
     }
 
-    public void setPid(String pid) {
-        this.pid = pid;
+    public void setUid(String uid) {
+        this.uid = uid;
     }
 
     public void setOs(String os) {
         this.os = os;
+    }
+
+    public void setVersion(String version) {
+        this.version = version;
+    }
+
+    public void setOwner(boolean owner) {
+        isOwner = owner;
     }
 
     // Parcelling part
@@ -132,7 +150,7 @@ public class Player implements Parcelable {
 
         in.readStringArray(data);
         // the order needs to be the same as in writeToParcel() method
-        this.pid = data[0];
+        this.uid = data[0];
         this.name = data[1];
         this.photoUrl = data[2];
         if (data[3] != null)
@@ -148,7 +166,7 @@ public class Player implements Parcelable {
     public void writeToParcel(Parcel dest, int flags) {
         // all we need for now when passing data through bundle
         dest.writeStringArray(new String[] {
-                this.pid,
+                this.uid,
                 this.name,
                 this.photoUrl,
                 this.city

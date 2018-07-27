@@ -1,7 +1,6 @@
 package io.renderapps.balizinha.fragment;
 
 import android.app.Fragment;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
@@ -43,7 +42,6 @@ import io.github.luizgrp.sectionedrecyclerviewadapter.SectionParameters;
 import io.github.luizgrp.sectionedrecyclerviewadapter.SectionedRecyclerViewAdapter;
 import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.activity.MainActivity;
 import io.renderapps.balizinha.model.Event;
 
 public class CalendarFragment extends Fragment implements AdapterView.OnItemSelectedListener {
@@ -51,7 +49,6 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
     // properties
     private final String UPCOMING_SECTION_TAG = "upcomingTag";
     private final String PAST_SECTION_TAG = "pastTag";
-    private Context mContext;
 
     List<Event> upcomingEventList;
     List<Event> pastEventList;
@@ -81,19 +78,13 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // init
-        todaysDate = new Date();
-        auth = FirebaseAuth.getInstance();
-        mDatabaseRef = FirebaseDatabase.getInstance().getReference();
         mFirebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        authStateListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                mFirebaseUser = firebaseAuth.getCurrentUser();
-            }
-        };
-        if (mFirebaseUser != null)
-            mGameReference = mDatabaseRef.child("userEvents").child(mFirebaseUser.getUid());
+        if (mFirebaseUser == null)
+            return;
+
+        mDatabaseRef = FirebaseDatabase.getInstance().getReference();
+        mGameReference = mDatabaseRef.child("userEvents").child(mFirebaseUser.getUid());
+        todaysDate = new Date();
         calendar = Calendar.getInstance();
     }
 
@@ -134,13 +125,10 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
         sectionAdapter.notifyDataSetChanged();
 
         sectionAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
-
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {
                 super.onItemRangeInserted(positionStart, itemCount);
-                upcomingSection.setState(Section.State.LOADED);
-                pastSection.setState(Section.State.LOADED);
-                sectionAdapter.notifyDataSetChanged();
+                setSectionLoaded();
             }
         });
         upcomingSection.setList(upcomingEventList);
@@ -149,48 +137,24 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
         loadEventKeys();
     }
 
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        mContext = getActivity();
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        auth.addAuthStateListener(authStateListener);
-    }
-
-    @Override
-    public void onStop() {
-        super.onStop();
-        if(authStateListener != null){
-            auth.removeAuthStateListener(authStateListener);
-        }
-    }
 
     /******************************************************************************
-     * Initialize map
+     * Firebase
      *****************************************************************************/
     private void loadEventKeys() {
         mGameReference.addChildEventListener(new ChildEventListener() {
             @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
-                    if (dataSnapshot.getValue(Boolean.class)) // true
+                    if ((Boolean) dataSnapshot.getValue())
                             loadEvent(dataSnapshot.getKey());
                 }
             }
 
             @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
-                    if (dataSnapshot.getValue(Boolean.class)) // true
+                    if ((Boolean) dataSnapshot.getValue())
                         loadEvent(dataSnapshot.getKey());
                     else {
                         final String eventKey = dataSnapshot.getKey();
@@ -200,18 +164,13 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
                             if (index > -1) {
                                 mPastEventIds.remove(index);
                                 pastEventList.remove(index);
-                                if (isAdded()) {
-                                    sectionAdapter.notifyItemRemovedFromSection(PAST_SECTION_TAG, index);
-                                }
                             }
                         } else if (mUpcomingEventIds.contains(eventKey)) {
                             final int index = mUpcomingEventIds.indexOf(eventKey);
                             if (index > -1) {
                                 mUpcomingEventIds.remove(index);
                                 upcomingEventList.remove(index);
-                                if (isAdded()) {
-                                    sectionAdapter.notifyItemRemovedFromSection(UPCOMING_SECTION_TAG, index);
-                                }
+                                updateAdapter(index, UPCOMING_SECTION_TAG, false, true);
                             }
                         }
                     }
@@ -219,72 +178,73 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             }
 
             @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {}
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {}
 
             @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {}
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, String s) {}
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 
     public void loadEvent(final String key) {
         mDatabaseRef.child("events").child(key).addValueEventListener(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null) {
                     if (isAdded()) {
                         final Event event = dataSnapshot.getValue(Event.class);
-                        event.setEid(dataSnapshot.getKey());
-                        final Date eventDate = new Date(event.getEndTime() * 1000);
+                        if (event == null)
+                            return;
                         final String eventKey = dataSnapshot.getKey();
+                        event.setEid(eventKey);
 
+                        // do not display if it's not active
+                        if (dataSnapshot.hasChild("active")){
+                            if (!event.active){
+                                final int upcomingIndex = mUpcomingEventIds.indexOf(eventKey);
+                                final int pastIndex = mPastEventIds.indexOf(eventKey);
+                                if (upcomingIndex > -1){
+                                    mUpcomingEventIds.remove(upcomingIndex);
+                                    upcomingEventList.remove(upcomingIndex);
+                                    updateAdapter(upcomingIndex, UPCOMING_SECTION_TAG, false, true);
+                                } else if (pastIndex > -1){
+                                    mPastEventIds.remove(pastIndex);
+                                    mPastEventIds.remove(pastIndex);
+                                    updateAdapter(pastIndex, PAST_SECTION_TAG, false, true);
+                                }
+
+                                // set section loaded in case event is only one user has joined
+                                // and it is no longer active
+                                setSectionLoaded();
+                                return;
+                            }
+                        }
+
+                        final Date eventDate = new Date(event.getEndTime() * 1000);
                         // upcoming events
                         if (todaysDate.before(eventDate)){
                             final int eventIndex = mUpcomingEventIds.indexOf(eventKey);
                             if (eventIndex > -1) {
                                 upcomingEventList.set(eventIndex, event);
-                                getActivity().runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        sectionAdapter.notifyItemChangedInSection(UPCOMING_SECTION_TAG, eventIndex);
-                                    }
-                                });
-
+                                updateAdapter(eventIndex, UPCOMING_SECTION_TAG, false, false);
                             } else {
                                 mUpcomingEventIds.add(eventKey);
                                 upcomingEventList.add(event);
-                                getActivity().runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        sectionAdapter.notifyItemInsertedInSection
-                                                (UPCOMING_SECTION_TAG, upcomingEventList.size() - 1);
-                                    }
-                                });
+                                updateAdapter(upcomingEventList.size() - 1, UPCOMING_SECTION_TAG,
+                                        true, false);
                             }
                         } else {
                             // past events
                             final int eventIndex = mPastEventIds.indexOf(eventKey);
                             if (eventIndex > -1) {
                                 pastEventList.set(eventIndex, event);
-                                getActivity().runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        sectionAdapter.notifyItemChangedInSection(PAST_SECTION_TAG, eventIndex);
-                                    }
-                                });
-
+                                updateAdapter(eventIndex, PAST_SECTION_TAG, false, false);
                             } else {
                                 mPastEventIds.add(eventKey);
                                 pastEventList.add(event);
-                                getActivity().runOnUiThread(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        sectionAdapter.notifyItemInsertedInSection
-                                                (PAST_SECTION_TAG, pastEventList.size() - 1);
-                                    }
-                                });
+                                updateAdapter(pastEventList.size() -1, PAST_SECTION_TAG, true, false);
                             }
                         }
                     }
@@ -292,48 +252,42 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 
     public void checkEmptyKeys(){
         mGameReference.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (!dataSnapshot.exists() || !dataSnapshot.hasChildren()){
-                    if (isAdded())
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                upcomingSection.setState(Section.State.LOADED);
-                                pastSection.setState(Section.State.LOADED);
-                                sectionAdapter.notifyDataSetChanged();
-                            }
-                        });
+                    // user has not joined any games
+                    setSectionLoaded();
                 } else {
                     boolean isEmpty = false;
                     for (DataSnapshot child : dataSnapshot.getChildren()) {
-                        if (child.getValue(Boolean.class))
+                        if (child.getValue() != null && (Boolean) child.getValue()) {
+                            // user has joined at least one game
                             break;
-                        else
+                        } else {
+                            // user has not joined any games
                             isEmpty = true;
+                        }
                     }
-                    if (isEmpty && isAdded())
-                        getActivity().runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                upcomingSection.setState(Section.State.LOADED);
-                                pastSection.setState(Section.State.LOADED);
-                                sectionAdapter.notifyDataSetChanged();
-                            }
-                        });
+
+                    if (isEmpty)
+                        setSectionLoaded();
                 }
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
+
+    /******************************************************************************
+     * Private methods
+     *****************************************************************************/
 
     public void onUserLeave(final Event event){
 
@@ -357,14 +311,6 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
                         mDatabaseRef.child("eventUsers").child(event.getEid())
                                 .child(mFirebaseUser.getUid()).setValue(false);
 
-                        // create and add event action
-//                        Action action = new Action(event.getEid(), "", event.getCreatedAt(),
-//                                Action.ACTION_LEAVE, mFirebaseUser.getUid());
-//                        if (mFirebaseUser.getDisplayName() != null)
-//                            action.setUsername(mFirebaseUser.getDisplayName());
-//                        String actionKey = mDatabaseRef.child("action").push().getKey();
-//                        mDatabaseRef.child("action").child(actionKey).setValue(action);
-
                     }
                 });
 
@@ -378,11 +324,46 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
         builder.create().show();
     }
 
+    void updateAdapter(final int index, final String sectionTag, final boolean isInsertion, final boolean isRemoval){
+        if (!isAdded() || sectionAdapter == null)
+            return;
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (isRemoval){
+                    sectionAdapter.notifyItemRemovedFromSection(sectionTag, index);
+                } else if (isInsertion){
+                    sectionAdapter.notifyItemInsertedInSection(sectionTag, index);
+                } else {
+                    // an update
+                    sectionAdapter.notifyItemChangedInSection(sectionTag, index);
+                }
+            }
+        });
+    }
+
+    void setSectionLoaded(){
+        if (isAdded()){
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    upcomingSection.setState(Section.State.LOADED);
+                    pastSection.setState(Section.State.LOADED);
+                    sectionAdapter.notifyDataSetChanged();
+                }
+            });
+        }
+    }
+
     @Override
     public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {}
 
     @Override
     public void onNothingSelected(AdapterView<?> adapterView) {}
+
+    /******************************************************************************
+     * Calendar Section class
+     *****************************************************************************/
 
     private class ExpandableContactsSection extends Section {
         final static int PAST = 0;
@@ -412,10 +393,6 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             }
         }
 
-        public int getmHeader() {
-            return mHeader;
-        }
-
         void setList(List<Event> list) {
             this.list = list;
         }
@@ -435,13 +412,29 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             final ItemViewHolder itemHolder = (ItemViewHolder) holder;
             final Event event = list.get(position);
 
-            // payment
-            if (event.paymentRequired)
-                ((ItemViewHolder) holder).paymentView.setVisibility(View.VISIBLE);
-            else
-                ((ItemViewHolder) holder).paymentView.setVisibility(View.GONE);
+            itemHolder.title.setText(event.getName().concat(" ").concat("(").concat(event.getType())
+                    .concat(")"));
 
-            if (mHeader == UPCOMING) {
+            // payment
+            int showPaymentView = (event.paymentRequired) ? View.VISIBLE : View.GONE;
+            ((ItemViewHolder) holder).paymentView.setVisibility(showPaymentView);
+
+            // date
+            formatTime(event.getStartTime());
+            String time = mFormatter.format(calendar.getTime());
+            itemHolder.time.setText(time);
+
+            // location
+            if (event.getPlace() != null && !event.getPlace().isEmpty()){
+                itemHolder.address.setText(event.getPlace());
+            } else {
+                String address = event.getCity();
+                if (event.getState() != null)
+                    address = address.concat(", ").concat(event.getState());
+                itemHolder.address.setText(address);
+            }
+
+            if (mHeader == UPCOMING && !event.getOwner().equals(mFirebaseUser.getUid())) {
                 itemHolder.editButton.setVisibility(View.VISIBLE);
                 itemHolder.editButton.setText(getString(R.string.delete));
                 itemHolder.editButton.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.white));
@@ -453,39 +446,6 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
                 });
             } else
                 itemHolder.editButton.setVisibility(View.GONE);
-
-
-//            if (!event.getOwner().equals(mFirebaseUser.getUid())) {
-//                if (mHeader == UPCOMING) {
-//                    itemHolder.editButton.setVisibility(View.VISIBLE);
-//                    itemHolder.editButton.setText(getString(R.string.delete));
-//                    itemHolder.editButton.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.white));
-//                    itemHolder.editButton.setOnClickListener(new View.OnClickListener() {
-//                        @Override
-//                        public void onClick(View view) {
-//                            onUserLeave(event);
-//                        }
-//                    });
-//                }
-//            } else
-//                itemHolder.editButton.setVisibility(View.GONE);
-
-            itemHolder.title.setText(event.getName().concat(" ").concat("(").concat(event.getType())
-                    .concat(")"));
-
-            if (event.getPlace() != null && !event.getPlace().isEmpty()){
-                itemHolder.address.setText(event.getPlace());
-            } else {
-                String address = event.getCity();
-                if (event.getState() != null)
-                    address = address.concat(", ").concat(event.getState());
-                itemHolder.address.setText(address);
-            }
-
-            // Date
-            formatTime(event.getStartTime());
-            String time = mFormatter.format(calendar.getTime());
-            itemHolder.time.setText(time);
 
             itemHolder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -504,7 +464,8 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
 
                     // start activity
                     startActivity(intent);
-                    ((MainActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right,
+                    if (isAdded())
+                        getActivity().overridePendingTransition(R.anim.anim_slide_in_right,
                             R.anim.anim_slide_out_left);
 
                 }
@@ -513,12 +474,12 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
             // set current players in game
             mDatabaseRef.child("eventUsers").child(event.getEid()).addListenerForSingleValueEvent(new ValueEventListener() {
                 @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                     int count = 0;
                     if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                         if (dataSnapshot.hasChildren()){
                             for (DataSnapshot data : dataSnapshot.getChildren()) {
-                                if (data.getValue(Boolean.class))
+                                if (data.getValue() != null && (Boolean) data.getValue())
                                     count++;
                             }
                         }
@@ -527,9 +488,7 @@ public class CalendarFragment extends Fragment implements AdapterView.OnItemSele
                 }
 
                 @Override
-                public void onCancelled(DatabaseError databaseError) {
-
-                }
+                public void onCancelled(@NonNull DatabaseError databaseError) { }
             });
         }
 

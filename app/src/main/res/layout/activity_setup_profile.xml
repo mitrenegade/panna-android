@@ -24,12 +24,12 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        style="?android:progressBarStyleSmall"
-        android:visibility="gone"/>
+        android:visibility="gone"
+        style="?android:progressBarStyleSmall" />
 
     <EditText
         android:id="@+id/user_name"
-        android:layout_width="fill_parent"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:drawableStart="@drawable/ic_user"
         android:drawableLeft="@drawable/ic_user"
@@ -43,7 +43,8 @@
         android:inputType="text"
         android:textSize="15sp"
         android:maxLength="50"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:imeOptions="actionNext"/>
 
     <EditText
         android:id="@+id/user_city"
@@ -60,8 +61,8 @@
         android:maxLength="30"
         android:textSize="15sp"
         android:inputType="text"
-        android:imeOptions="actionNext"
-        android:maxLines="1" />
+        android:maxLines="1"
+        android:imeOptions="actionNext" />
 
     <EditText
         android:id="@+id/user_description"
@@ -75,9 +76,11 @@
         android:drawablePadding="10dp"
         android:hint="@string/description"
         android:fontFamily="sans-serif"
+        android:inputType="textLongMessage"
         android:textSize="15sp"
         android:maxLines="5"
-        android:maxLength="250"/>
+        android:maxLength="200"
+        android:imeOptions="actionDone"/>
 
     <br.com.simplepass.loading_button_lib.customViews.CircularProgressButton
         android:id="@+id/save_button"
@@ -94,6 +97,4 @@
         app:finalCornerAngle="50dp"
         android:text="@string/save"
         android:textColor="@android:color/white"/>
-
-
 </LinearLayout>

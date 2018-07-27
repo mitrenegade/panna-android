@@ -1,22 +1,17 @@
 package io.renderapps.balizinha.fragment;
 
 import android.app.Fragment;
-import android.content.Context;
-import android.graphics.PorterDuff;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
-import android.widget.ProgressBar;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -40,6 +35,8 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.Map;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.adapter.AccountAdapter;
 import io.renderapps.balizinha.service.CloudService;
@@ -48,14 +45,15 @@ import io.renderapps.balizinha.util.Constants;
 
 
 public class AccountFragment extends Fragment {
-    private Context mContext;
-    private RecyclerView recyclerView;
-    private FrameLayout progressView;
+
     private boolean paymentRequired;
     private int cacheExpiration;
     private String customerId = "";
     private boolean didSetAdapter = false;
     private boolean initiatedCustomerSession = false;
+
+    @BindView(R.id.account_progressbar) FrameLayout progressView;
+    @BindView(R.id.account_recycler) RecyclerView recyclerView;
 
     // firebase
     private DatabaseReference databaseRef;
@@ -79,31 +77,16 @@ public class AccountFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_account, container, false);
+        ButterKnife.bind(this, root);
 
         // toolbar
         Toolbar toolbar = root.findViewById(R.id.account_toolbar);
         ((AppCompatActivity)getActivity()).setSupportActionBar(toolbar);
         ((AppCompatActivity)getActivity()).getSupportActionBar().setTitle(R.string.title_account);
 
-        progressView = root.findViewById(R.id.account_progressbar);
-        ((ProgressBar)progressView.findViewById(R.id.progressbar)).getIndeterminateDrawable()
-                .setColorFilter(ContextCompat.getColor(mContext, R.color.colorPrimary),
-                PorterDuff.Mode.SRC_IN);
-
-        // setup recycler
-        LinearLayoutManager layoutManager = new LinearLayoutManager(mContext);
-        recyclerView = root.findViewById(R.id.account_recycler);
-        recyclerView.hasFixedSize();
-        recyclerView.setLayoutManager(layoutManager);
-
+        setupRecycler();
         fetchPaymentRequired();
         return root;
-    }
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        mContext = getActivity();
     }
 
     @Override
@@ -116,6 +99,13 @@ public class AccountFragment extends Fragment {
         }
     }
 
+    public void setupRecycler(){
+        if (getActivity() == null || getActivity().isDestroyed() || getActivity().isFinishing()) return;
+
+        LinearLayoutManager layoutManager = new LinearLayoutManager(getActivity());
+        recyclerView.hasFixedSize();
+        recyclerView.setLayoutManager(layoutManager);
+    }
 
     public void setAdapter(final int optionsId){
         // always update adapter on main thread
@@ -143,7 +133,7 @@ public class AccountFragment extends Fragment {
                 .child("customer_id")
                 .addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                             customerId = dataSnapshot.getValue(String.class);
                             createCustomerSessions(customerId);
@@ -166,7 +156,7 @@ public class AccountFragment extends Fragment {
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {}
+                    public void onCancelled(@NonNull DatabaseError databaseError) {}
                 });
     }
 
@@ -188,6 +178,8 @@ public class AccountFragment extends Fragment {
                     public void onCustomerRetrieved(@NonNull Customer customer) {
                         if (customer.getDefaultSource() != null) {
                             CustomerSource customerSource = customer.getSourceById(customer.getDefaultSource());
+                            if (customerSource == null) return;
+
                             Source source = Source.fromString(customerSource.toString());
 
                             // Note: it isn't possible for a null or non-card source to be returned.
@@ -228,7 +220,7 @@ public class AccountFragment extends Fragment {
                 .child("source")
                 .addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         final int selectedOption;
                         if (dataSnapshot.exists() && dataSnapshot.getValue() != null)
                             selectedOption = R.array.accountOptionsWithPayment;
@@ -239,7 +231,7 @@ public class AccountFragment extends Fragment {
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {}
+                    public void onCancelled(@NonNull DatabaseError databaseError) {}
                 });
     }
 
@@ -251,9 +243,11 @@ public class AccountFragment extends Fragment {
                     .child("source")
                     .addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                             if (!dataSnapshot.exists() || dataSnapshot.getValue() == null){
                                 final String last4 = cardData.getLast4();
+                                if (last4 == null) return;
+
                                 Map<String, Object> childUpdates = new HashMap<>();
                                 childUpdates.put("source", sourceId);
                                 childUpdates.put("last4", last4);
@@ -266,7 +260,7 @@ public class AccountFragment extends Fragment {
                         }
 
                         @Override
-                        public void onCancelled(DatabaseError databaseError) {}
+                        public void onCancelled(@NonNull DatabaseError databaseError) {}
                     });
         }
     }

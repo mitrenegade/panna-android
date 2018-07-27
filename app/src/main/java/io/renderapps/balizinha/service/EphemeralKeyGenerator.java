@@ -1,9 +1,7 @@
 package io.renderapps.balizinha.service;
 
 import android.support.annotation.NonNull;
-import android.util.Log;
 
-import com.google.firebase.auth.FirebaseUser;
 import com.stripe.android.EphemeralKeyProvider;
 import com.stripe.android.EphemeralKeyUpdateListener;
 

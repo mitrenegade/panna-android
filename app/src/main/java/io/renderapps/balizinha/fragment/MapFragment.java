@@ -4,11 +4,9 @@ import android.Manifest;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.Fragment;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.PorterDuff;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
@@ -16,7 +14,6 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -29,7 +26,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -59,6 +55,7 @@ import java.util.Date;
 import java.util.List;
 
 import io.renderapps.balizinha.R;
+
 import io.renderapps.balizinha.activity.CreateEventActivity;
 import io.renderapps.balizinha.adapter.MapAdapter;
 import io.renderapps.balizinha.model.Event;
@@ -67,22 +64,17 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
 
     // properties
-    private Context mContext;
     private Date todaysDate;
-    private MapAdapter mAdapter;
+    private RecyclerView.Adapter mAdapter;
     private List<Event> currentEvents;
     private List<String> currentEventsIds;
     private List<String> userEvents;
-    private List<String> processingPayments;
 
     // firebase
-    private  FirebaseAuth auth;
-    private FirebaseAuth.AuthStateListener authStateListener;
     private FirebaseUser firebaseUser;
     private DatabaseReference databaseRef;
     private DatabaseReference eventsRef;
     private ChildEventListener childEventListener;
-    private ValueEventListener valueEventListener;
     private Query eventQuery;
 
     // map
@@ -133,21 +125,13 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         currentEventsIds = new ArrayList<>();
         currentEvents = new ArrayList<>();
         userEvents = new ArrayList<>();
-        processingPayments = new ArrayList<>();
 
         // firebase
-        auth = FirebaseAuth.getInstance();
         databaseRef = FirebaseDatabase.getInstance().getReference();
         eventsRef = databaseRef.child("events");
-        firebaseUser = auth.getCurrentUser();
-        firebaseUser = auth.getCurrentUser();
+
+        firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         databaseRef.child("userEvents").child(firebaseUser.getUid()).keepSynced(true);
-        authStateListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                firebaseUser = firebaseAuth.getCurrentUser();
-            }
-        };
 
         // query all games that have not reached endTime
         final double start = todaysDate.getTime() / 1000.0;
@@ -157,9 +141,6 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         recyclerView = root.findViewById(R.id.event_recycler);
         emptyView = root.findViewById(R.id.empty_view);
         progressView = root.findViewById(R.id.progress_view);
-        ((ProgressBar)progressView.findViewById(R.id.progressbar)).getIndeterminateDrawable()
-                .setColorFilter(ContextCompat.getColor(mContext, R.color.colorPrimary),
-                PorterDuff.Mode.SRC_IN);
         setupRecycler();
 
         // map
@@ -171,31 +152,20 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
 //            Toast.makeText(getActivity(), "Google Maps is unavailable", Toast.LENGTH_LONG).show();
 //
         fetchUserEvents();
-        checkEmptyState();
         fetchCurrentEvents();
+        checkEmptyState();
         return root;
-    }
-
-    @Override
-    public void onAttach(Context context) {
-        super.onAttach(context);
-        mContext = getActivity();
-    }
-
-    @Override
-    public void onDetach() {
-        super.onDetach();
     }
 
     public void onStart() {
 //        mGoogleApiClient.connect();
         super.onStart();
+
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        auth.addAuthStateListener(authStateListener);
         if (mAdapter != null)
             mAdapter.notifyDataSetChanged();
     }
@@ -203,9 +173,6 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     public void onStop() {
 //        mGoogleApiClient.disconnect();
         super.onStop();
-        if(authStateListener != null && auth != null){
-            auth.removeAuthStateListener(authStateListener);
-        }
     }
 
 
@@ -218,34 +185,19 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.create_event)
-            startActivity(new Intent(mContext, CreateEventActivity.class));
+            if (isValidContext())
+                startActivity(new Intent(getActivity(), CreateEventActivity.class));
         return super.onOptionsItemSelected(item);
     }
 
-//    public void startTimer(){
-//        new CountDownTimer(15000, 1000) {
-//
-//            @Override
-//            public void onTick(long millisUntilFinished) {}
-//
-//            @Override
-//            public void onFinish() {
-//                if (progressView.isShown()){
-//                    // if we are still loading after 15 sec, stop and show empty view
-//                    progressView.setVisibility(View.GONE);
-//                    emptyView.setVisibility(View.VISIBLE);
-//                }
-//            }
-//        }.start();
-//    }
-
     public void setupRecycler(){
-        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(mContext);
-//        linearLayoutManager.setReverseLayout(true);
-//        linearLayoutManager.setStackFromEnd(true);
+        if (!isValidContext()) return;
+
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(getActivity());
         recyclerView.setLayoutManager(linearLayoutManager);
         recyclerView.hasFixedSize();
-        mAdapter = new MapAdapter(getActivity(), this, currentEvents);
+
+        mAdapter = new MapAdapter(getActivity(), currentEvents);
         mAdapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {
@@ -262,6 +214,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
                     emptyView.setVisibility(View.VISIBLE);
             }
         });
+
         recyclerView.setAdapter(mAdapter);
     }
 
@@ -282,19 +235,6 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         }
     }
 
-    public void addProcessingPayment(String eventId){
-        processingPayments.add(eventId);
-    }
-
-    public void removeProcessingPayment(String eventId){
-        final int index = processingPayments.indexOf(eventId);
-        if (index > -1)
-            processingPayments.remove(index);
-    }
-
-    public boolean isPaymentInProcess(String eventId){
-        return processingPayments.contains(eventId);
-    }
 
     /******************************************************************************
      * Firebase
@@ -303,9 +243,9 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     public void fetchUserEvents(){
         childEventListener = new ChildEventListener() {
             @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null)
-                    if (dataSnapshot.getValue(Boolean.class)) {
+                    if ((Boolean) dataSnapshot.getValue()) {
                         userEvents.add(dataSnapshot.getKey());
                         if (currentEventsIds.contains(dataSnapshot.getKey())){
                             removeEvent(dataSnapshot.getKey());
@@ -314,10 +254,12 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
             }
 
             @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, String s) {
+                if (dataSnapshot.getValue() == null) return;
+
                 final String eventKey = dataSnapshot.getKey();
                 final int index = userEvents.indexOf(eventKey);
-                final boolean isJoined = dataSnapshot.getValue(Boolean.class);
+                final boolean isJoined = (Boolean) dataSnapshot.getValue();
 
                 if (!isJoined){
                     // user left game
@@ -328,7 +270,6 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
                 } else{
                     // user joined game
                     if (index == -1) {
-                        // add to list
                         userEvents.add(eventKey);
                         removeEvent(eventKey);
                     }
@@ -336,13 +277,13 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
             }
 
             @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {}
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {}
 
             @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {}
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, String s) {}
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         };
 
         databaseRef.child("userEvents").child(firebaseUser.getUid()).addChildEventListener(childEventListener);
@@ -351,42 +292,35 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     private void checkEmptyState(){
         eventQuery.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                boolean isEmpty = true;
-                if (!dataSnapshot.exists() || !dataSnapshot.hasChildren()) {
-                    // no events for today
-                    progressView.setVisibility(View.GONE);
-                    emptyView.setVisibility(View.VISIBLE);
-                } else {
-                    for (DataSnapshot child: dataSnapshot.getChildren()){
-                        if (!userEvents.contains(child.getKey())) {
-                            isEmpty = false;
-                            break;
-                        }
-                    }
-                    if (isEmpty) {
-                        progressView.setVisibility(View.GONE);
-                        emptyView.setVisibility(View.VISIBLE);
-                    }
-                }
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                // initial data loaded
+                if (currentEvents.size() == 0)
+                    showEmptyView();
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
+            public void onCancelled(@NonNull DatabaseError databaseError) { }
         });
     }
 
     private void fetchCurrentEvents(){
         eventQuery.addChildEventListener(new ChildEventListener() {
             @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null) {
+                    final Event event = dataSnapshot.getValue(Event.class);
+                    if (event == null)
+                        return;
+
+                    // do not display if it's not active
+                    if (dataSnapshot.hasChild("active")){
+                        if (!event.active){
+                            return;
+                        }
+                    }
+
                     // check if event is today / upcoming
-//                    double time = dataSnapshot.child("startTime").getValue(Double.class) * 1000;
-                    long endTime = dataSnapshot.child("endTime").getValue(Long.class) * 1000;
-//                    Date eDate = new Date((long)time);
+                    long endTime = event.getEndTime() * 1000;
                     Date endDate = new Date(endTime);
                     if (todaysDate.before(endDate)) {
                         if (!userEvents.contains(dataSnapshot.getKey())) {
@@ -395,14 +329,27 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
                         }
                     }
                 }
+
             }
 
             @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, String s) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null) {
+                    final Event event = dataSnapshot.getValue(Event.class);
+                    if (event == null)
+                        return;
+
+                    // remove event from listing if no longer active
+                    if (dataSnapshot.hasChild("active")){
+                        if (!event.active){
+                            removeEvent(dataSnapshot.getKey());
+                            return;
+                        }
+                    }
+
                     // check if event is today / upcoming
 //                    Date eDate = new Date(dataSnapshot.child("startTime").getValue(Long.class) * 1000);
-                    long endTime = dataSnapshot.child("endTime").getValue(Long.class) * 1000;
+                    long endTime = event.getEndTime() * 1000;
                     Date endDate = new Date(endTime);
                     if (todaysDate.before(endDate)) {
                         if (!userEvents.contains(dataSnapshot.getKey())) {
@@ -414,24 +361,26 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
             }
 
             @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {}
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {}
 
             @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {}
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, String s) {}
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 
-    public void addEvent(String eid){
+    public void addEvent(final String eid){
         eventsRef.child(eid).addValueEventListener(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 final Event event = dataSnapshot.getValue(Event.class);
+                if (event == null) return;
+
                 event.setEid(dataSnapshot.getKey());
-                // updating or appending to list
                 final int index = currentEventsIds.indexOf(dataSnapshot.getKey());
+
                 if (index > -1){
                     // update
                     currentEvents.set(index, event);
@@ -445,7 +394,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 
@@ -464,6 +413,18 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         }
     }
 
+    void showEmptyView(){
+        if (isAdded() && getActivity() != null){
+            getActivity().runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    progressView.setVisibility(View.GONE);
+                    emptyView.setVisibility(View.VISIBLE);
+                }
+            });
+        }
+    }
+
     /******************************************************************************
      * Initialize map
      *****************************************************************************/
@@ -476,8 +437,10 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
 
     // check for google services availability
     public boolean googleServicesAvailable() {
+        if (!isValidContext()) return false;
+
         GoogleApiAvailability api = GoogleApiAvailability.getInstance();
-        int isAvailable = api.isGooglePlayServicesAvailable(mContext);
+        int isAvailable = api.isGooglePlayServicesAvailable(getActivity());
         if (isAvailable == ConnectionResult.SUCCESS) {
             return true;
         } else if (api.isUserResolvableError(isAvailable)) {
@@ -493,9 +456,10 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (isValidContext())
+            if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
             return;
-        }
+
         mMap.setMyLocationEnabled(true);
         mMap.getUiSettings().setMyLocationButtonEnabled(true);
         mMap.getUiSettings().setMapToolbarEnabled(true);
@@ -515,10 +479,13 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         mLocationRequest.setInterval(UPDATE_INTERVAL);
         //mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
-        if (android.support.v4.app.ActivityCompat.checkSelfPermission(mContext,
-                Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
+
+        if (isValidContext()) {
+            if (android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(),
+                    Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                    && android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                return;
+            }
         }
         LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
                 mLocationRequest, this);
@@ -526,9 +493,11 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
+        if (!isValidContext()) return;
+
         // Display the connection status
-        if (ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(mContext, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
                     LOCATION_REQUEST_CODE);
             return;
@@ -538,7 +507,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         if (mLocation != null) {
             goToLocationZoom(mLocation.getLatitude(), mLocation.getLongitude(), 15);
         } else {
-            Toast.makeText(mContext, "Unable to determine location, check your network connection",
+            Toast.makeText(getActivity(), "Unable to determine location, check your network connection",
                     Toast.LENGTH_SHORT).show();
         }
         startLocationUpdates();
@@ -624,5 +593,9 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
                 });
         // Create the AlertDialog object and return it
         return builder.create();
+    }
+
+    private boolean isValidContext(){
+        return getActivity() != null && !(getActivity().isDestroyed() || getActivity().isFinishing());
     }
 }

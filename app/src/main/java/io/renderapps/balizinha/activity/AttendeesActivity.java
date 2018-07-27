@@ -26,17 +26,17 @@ public class AttendeesActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_attendees);
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        if (getSupportActionBar() != null)
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setTitle("Attending Players");
 
 
         // get players from bundle
         Bundle bundle = getIntent().getExtras();
-        if (bundle != null && bundle.containsKey(EXTRA_PLAYERS)){
+        if (bundle != null && bundle.containsKey(EXTRA_PLAYERS))
             playerList = bundle.getParcelableArrayList(EXTRA_PLAYERS);
-            if (playerList == null)
-                onBackPressed();
-        }
+        if (playerList == null)
+            onBackPressed();
 
         // views
         mRecycler = findViewById(R.id.recycler);

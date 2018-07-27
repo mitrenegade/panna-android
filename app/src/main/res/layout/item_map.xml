@@ -74,12 +74,13 @@
         android:id="@+id/player_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:hint="-"
         android:textSize="@dimen/ma_list_item_secondary_text"
         android:layout_alignTop="@+id/event_details"
         android:layout_alignParentEnd="true"
         android:layout_marginEnd="16dp"
         android:gravity="center_vertical"
-        android:drawableStart="@drawable/ic_players_outline"
+        android:drawableStart="@drawable/ic_players"
         android:drawablePadding="10dp"
         android:layout_marginBottom="@dimen/ma_list_item_line_spacing" />
 

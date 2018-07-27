@@ -2,6 +2,7 @@ package io.renderapps.balizinha.adapter;
 
 import android.content.Context;
 import android.content.Intent;
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -52,15 +53,16 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
         this.paymentRequired = paymentRequired;
     }
 
+    @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_account, parent, false);
         return new ViewHolder(view);
     }
 
     @Override
-    public void onBindViewHolder(final ViewHolder holder, final int position) {
+    public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         final String option = options[position];
         holder.option.setText(option);
 
@@ -92,9 +94,11 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                         case 3:
                             // logout
                             FirebaseAuth auth = FirebaseAuth.getInstance();
-                            for (UserInfo info : auth.getCurrentUser().getProviderData())
-                                if (info.getProviderId().equals("facebook.com"))
-                                    LoginManager.getInstance().logOut();
+                            if (auth.getCurrentUser() != null) {
+                                for (UserInfo info : auth.getCurrentUser().getProviderData())
+                                    if (info.getProviderId().equals("facebook.com"))
+                                        LoginManager.getInstance().logOut();
+                            }
                             CustomerSession.endCustomerSession();
                             auth.signOut();
                             break;
@@ -117,9 +121,11 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                         case 2:
                             // logout
                             FirebaseAuth auth = FirebaseAuth.getInstance();
-                            for (UserInfo info : auth.getCurrentUser().getProviderData())
-                                if (info.getProviderId().equals("facebook.com"))
-                                    LoginManager.getInstance().logOut();
+                            if (auth.getCurrentUser() != null) {
+                                for (UserInfo info : auth.getCurrentUser().getProviderData())
+                                    if (info.getProviderId().equals("facebook.com"))
+                                        LoginManager.getInstance().logOut();
+                            }
                             CustomerSession.endCustomerSession();
                             auth.signOut();
                             break;
@@ -133,5 +139,4 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
     public int getItemCount() {
         return options.length;
     }
-
 }
