@@ -142,7 +142,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
                 break;
             case R.id.save:
                 if (!updateProgressbar.isShown())
-                    onUpdate();
+                    updateAndSave();
                 break;
         }
         return super.onOptionsItemSelected(item);
@@ -153,11 +153,11 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         if (view.getId() == R.id.save_button){
             if (progressView != null) {
                 if (!progressView.isShown()) {
-                    onSave();
+                    updateAndSave();
                     return;
                 }
             }
-            onSave();
+            updateAndSave();
         }
     }
 
@@ -179,9 +179,8 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         overridePendingTransition(R.anim.anim_slide_in_left, R.anim.anim_slide_out_right);
     }
 
-
     /**************************************************************************************************
-     * Update
+     * Setup Profile
      *************************************************************************************************/
 
     void setupUpdateProfile(){
@@ -202,78 +201,34 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         loadPhoto();
     }
 
-    public void onUpdate(){
-        final Context mContext = this;
-        enableEditing(false);
-
-        if (!validForm())
-            enableEditing(true);
-        else {
-            updateProgressbar.setVisibility(View.VISIBLE);
-            databaseRef.updateChildren(createChildUpdates()).addOnCompleteListener(new OnCompleteListener<Void>() {
-                @Override
-                public void onComplete(@NonNull Task<Void> task) {
-                    if (task.isSuccessful()){
-                        if (mBytes != null && mBytes.length > 0)
-                            FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
-                                    mBytes);
-                        Toast.makeText(mContext, "Profile updated", Toast.LENGTH_SHORT).show();
-                        allowBackNavigation = true;
-                        onBackPressed();
-                    } else {
-                        Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
-                        enableEditing(true);
-                        updateProgressbar.setVisibility(View.GONE);
-                    }
-                }
-            });
-        }
-    }
-
-    /**************************************************************************************************
-     * Setup Profile
-     *************************************************************************************************/
-
-
     void setupNewProfile(){
         saveButton = findViewById(R.id.save_button);
         saveButton.setOnClickListener(this);
     }
 
-    public void onSave(){
-        final Context mContext = this;
-        enableEditing(false);
-
-        if (!validForm()){
-            enableEditing(true);
-        } else {
-            if (!didSetPhoto) {
-                showDialog();
-            } else {
-                saveButton.startAnimation();
-                databaseRef.updateChildren(createChildUpdates())
-                        .addOnCompleteListener(new OnCompleteListener<Void>() {
-                            @Override
-                            public void onComplete(@NonNull Task<Void> task) {
-                                if (task.isSuccessful()) {
-                                    if (mBytes != null && mBytes.length > 0)
-                                        FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
-                                                mBytes);
-                                    launchMainActivity();
-                                } else {
-                                    Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
-                                    enableEditing(true);
-                                    saveButton.revertAnimation();
-                                }
-                            }
-                        });
-            }
-        }
-    }
-
     /**************************************************************************************************
      * Action handlers
      *************************************************************************************************/
+
+    private void updateAndSave(){
+        enableEditing(false);
+        if (!validForm()){
+            enableEditing(true);
+            return;
+        }
+
+        if (isUpdating){
+            updateProgressbar.setVisibility(View.VISIBLE);
+        } else {
+            if (!didSetPhoto) {
+                showDialog();
+                return;
+            }
+            saveButton.startAnimation();
+        }
+
+        updateAccount();
+    }
 
     public boolean validForm() {
         String name = nameField.getText().toString().trim();
@@ -290,7 +245,6 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         locationField.setEnabled(isEnabled);
         descriptionField.setEnabled(isEnabled);
         profilePhoto.setEnabled(isEnabled);
-
         allowBackNavigation = isEnabled;
     }
 
@@ -302,10 +256,6 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         String info = descriptionField.getText().toString().trim();
 
         // add children
-        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
-                .setDisplayName(name).build();
-        firebaseUser.updateProfile(profileUpdates);
-
         childUpdates.put("/players/" + uid + "/name", name);
         if (!city.isEmpty())
             childUpdates.put("/players/" + uid + "/city", city);
@@ -319,10 +269,11 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
         Bitmap bm = BitmapFactory.decodeResource(getResources(), R.drawable.ic_check);
         saveButton.doneLoadingAnimation(android.R.color.white, bm);
 
+        final Context context = this;
         new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
-                startActivity(new Intent(getBaseContext(), MainActivity.class));
+                startActivity(new Intent(context, MainActivity.class));
                 finish();
             }
         }, 1000);
@@ -332,10 +283,63 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
      * Firebase
      *****************************************************************************/
 
+    public void updateAccount(){
+        final Context mContext = this;
+        String name = nameField.getText().toString().trim();
+
+        UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
+                .setDisplayName(name).build();
+        firebaseUser.updateProfile(profileUpdates).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                databaseRef.updateChildren(createChildUpdates()).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            if (mBytes != null && mBytes.length > 0)
+                                FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
+                                        mBytes);
+
+                            if (!isDestroyed() && !isFinishing()){
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (isUpdating) {
+                                            Toast.makeText(mContext, "Profile updated", Toast.LENGTH_SHORT).show();
+                                            allowBackNavigation = true;
+                                            onBackPressed();
+                                        } else {
+                                            launchMainActivity();
+                                        }
+                                    }
+                                });
+                            }
+                        } else {
+                            Toast.makeText(mContext, getString(R.string.db_error), Toast.LENGTH_LONG).show();
+                            enableEditing(true);
+
+                            if (!isDestroyed() && !isFinishing()) {
+                                runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        if (isUpdating) {
+                                            updateProgressbar.setVisibility(View.GONE);
+                                        } else
+                                            saveButton.revertAnimation();
+                                    }
+                                });
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
     public void fetchAccount(){
         databaseRef.child(REF_PLAYERS).child(firebaseUser.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                     player = dataSnapshot.getValue(Player.class);
                     if (player == null)
@@ -356,12 +360,6 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
 
                                 // hide progress view
                                 progressView.setVisibility(View.GONE);
-
-                                // load picture
-//                                if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty()) {
-//                                    GeneralHelpers.glideImage(mContext, profilePhoto, player.getPhotoUrl(),
-//                                            R.drawable.ic_default_photo);
-//                                }
                             }
                         });
                     }
@@ -369,7 +367,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 
@@ -501,7 +499,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
                     public void onClick(DialogInterface dialog, int id) {
                         dialog.cancel();
                         didSetPhoto = true;
-                        onSave();
+                        updateAndSave();
                     }
                 });
 

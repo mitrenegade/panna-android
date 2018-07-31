@@ -2,12 +2,10 @@ package io.renderapps.balizinha.fragment;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.PorterDuff;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -140,7 +138,6 @@ public class EventDetailsFragment extends Fragment {
         LinearLayoutManager layoutManager
                 = new LinearLayoutManager(getActivity(), LinearLayoutManager.HORIZONTAL, false);
         playersRecycler.setLayoutManager(layoutManager);
-        playersRecycler.hasFixedSize();
 
         // adapter
         playersAdapter = new PlayersAdapter(getActivity(), playerList);

@@ -7,6 +7,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -53,7 +54,7 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
     private DatabaseReference databaseRef = FirebaseDatabase.getInstance().getReference();
     private DatabaseReference paymentRef = databaseRef.child("charges").child("events");
     private FirebaseRemoteConfig mRemoteConfig  = FirebaseRemoteConfig.getInstance();
-    private FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+    private FirebaseUser currentUser;
 
     private TextView title;
     private TextView time;
@@ -163,11 +164,13 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
         joinButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (currentUser == null)
-                    return;
+                currentUser = FirebaseAuth.getInstance().getCurrentUser();
+                if (currentUser == null) return;
 
-                if (!GeneralHelpers.isValidFirebaseName(currentUser))
-                    DialogHelper.showAddNameDialog(((MainActivity)mContext));
+                if (!GeneralHelpers.isValidFirebaseName(currentUser)) {
+                    DialogHelper.showAddNameDialog(((MainActivity) mContext));
+                    return;
+                }
 
                 if (event.paymentRequired)
                     hasUserAlreadyPaid(event, currentUser.getUid());
@@ -384,8 +387,7 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
 
     private boolean isValidContext(){
         if (mContext instanceof MainActivity){
-            if (!((MainActivity) mContext).isDestroyed() && !((MainActivity) mContext).isFinishing())
-                return true;
+            return !((MainActivity) mContext).isDestroyed() && !((MainActivity) mContext).isFinishing();
         }
 
         return false;

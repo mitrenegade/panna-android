@@ -46,11 +46,16 @@ public class UserProfileActivity extends AppCompatActivity {
 
         // fetch bundle from intent
         uid = getIntent().getStringExtra(USER_ID);
+        if (uid == null || uid.isEmpty()) {
+            onBackPressed();
+            return;
+        }
 
         // toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("Profile");
+        if (getSupportActionBar() != null)
+            getSupportActionBar().setTitle("Profile");
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         // views
@@ -74,7 +79,7 @@ public class UserProfileActivity extends AppCompatActivity {
         FirebaseDatabase.getInstance().getReference().child(REF_PLAYERS)
                 .child(uid).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
                     final Player player = dataSnapshot.getValue(Player.class);
                     if (player == null) {
@@ -100,7 +105,7 @@ public class UserProfileActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {}
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
         });
     }
 

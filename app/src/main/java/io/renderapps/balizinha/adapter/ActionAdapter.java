@@ -12,7 +12,6 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -187,12 +186,10 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
         if (player.getName() != null && !player.getName().isEmpty())
             holder.username.setText(player.getName());
         if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty())
-            loadImage(holder.photo, player.getPhotoUrl());
+            PhotoHelper.glideImage(mContext, holder.photo, player.getPhotoUrl(), R.drawable.ic_default_photo);
         else {
-            Glide.with(mContext).clear(holder.photo);
-            holder.photo.setImageResource(R.drawable.ic_default_photo);
+            PhotoHelper.clearImage(mContext, holder.photo);
         }
-
 
         // to go user profile on photo click
         holder.photo.setOnClickListener(new View.OnClickListener() {
@@ -229,9 +226,5 @@ public class ActionAdapter extends RecyclerView.Adapter<ActionAdapter.ViewHolder
     @Override
     public int getItemCount() {
         return messages.size();
-    }
-
-    private void loadImage(ImageView iv, String photoUrl){
-        PhotoHelper.glideImage(mContext, iv, photoUrl, R.drawable.ic_default_photo);
     }
 }

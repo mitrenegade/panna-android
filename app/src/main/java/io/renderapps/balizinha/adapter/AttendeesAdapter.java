@@ -11,7 +11,6 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.storage.FirebaseStorage;
@@ -78,16 +77,14 @@ public class AttendeesAdapter extends RecyclerView.Adapter<AttendeesAdapter.View
                 if (uri != null){
                     PhotoHelper.glideImage(mContext, holder.photo, uri.toString(), R.drawable.ic_default_photo);
                 } else {
-                    Glide.with(mContext).clear(holder.photo);
-                    holder.photo.setImageResource(R.drawable.ic_default_photo);
+                    PhotoHelper.clearImage(mContext, holder.photo);
                 }
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception exception) {
                 // Handle any errors
-                Glide.with(mContext).clear(holder.photo);
-                holder.photo.setImageResource(R.drawable.ic_default_photo);
+                PhotoHelper.clearImage(mContext, holder.photo);
             }
         });
     }

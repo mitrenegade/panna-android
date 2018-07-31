@@ -94,7 +94,6 @@ public class EventDetailsActivity extends AppCompatActivity {
     private FirebaseUser firebaseUser;
     private FirebaseRemoteConfig remoteConfig;
 
-
     @BindView(R.id.app_bar_layout) AppBarLayout appBarLayout;
     @BindView(R.id.header_img) ImageView headerImage;
     @BindView(R.id.viewpager) ViewPager mViewPager;
@@ -105,6 +104,11 @@ public class EventDetailsActivity extends AppCompatActivity {
     @BindView(R.id.status_layout) LinearLayout joinProgress;
 
     @OnClick(R.id.joinLeaveButton) void onJoinLeaveGame(){
+        firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+
+        if (firebaseUser == null)
+            onBackPressed();
+
         if (userJoined) {
             showLeaveDialog();
             return;
@@ -150,10 +154,6 @@ public class EventDetailsActivity extends AppCompatActivity {
         paymentRef = databaseRef.child("charges").child("events")
                 .child(eventId);
         paymentRef.keepSynced(true);
-
-        firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (firebaseUser == null)
-            onBackPressed();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);

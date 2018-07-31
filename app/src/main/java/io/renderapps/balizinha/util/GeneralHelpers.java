@@ -34,5 +34,16 @@ public class GeneralHelpers {
         return isValid;
     }
 
+    // testing
+    public static String getFirebaseName(FirebaseUser firebaseUser){
+        if (firebaseUser.getDisplayName() == null || firebaseUser.getDisplayName().isEmpty())
+            return "-";
 
+        for (UserInfo userInfo : firebaseUser.getProviderData()) {
+            if (userInfo.getDisplayName() != null && !userInfo.getDisplayName().isEmpty()) {
+                return userInfo.getDisplayName();
+            }
+        }
+        return "-";
+    }
 }

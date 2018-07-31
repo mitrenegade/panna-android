@@ -20,6 +20,7 @@ import com.bumptech.glide.request.RequestOptions;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
+import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.activity.AttendeesActivity;
 import io.renderapps.balizinha.activity.EventDetailsActivity;
 import io.renderapps.balizinha.activity.MainActivity;
@@ -185,9 +186,7 @@ public class PhotoHelper {
 
         if (context instanceof MainActivity) {
             final MainActivity activity = (MainActivity) context;
-            if (activity.isDestroyed() || activity.isFinishing()) {
-                return false;
-            }
+            return !activity.isDestroyed() && !activity.isFinishing();
         }
         return true;
     }
@@ -224,6 +223,13 @@ public class PhotoHelper {
                     .apply(myOptions)
                     .load(url)
                     .into(imageView);
+        }
+    }
+
+    public static void clearImage(Context context, ImageView imageView){
+        if (isValidContextForGlide(context)){
+            Glide.with(context).clear(imageView);
+            imageView.setImageResource(R.drawable.ic_default_photo);
         }
     }
 }

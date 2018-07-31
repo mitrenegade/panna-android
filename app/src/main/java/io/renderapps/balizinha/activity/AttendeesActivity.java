@@ -35,8 +35,11 @@ public class AttendeesActivity extends AppCompatActivity {
         Bundle bundle = getIntent().getExtras();
         if (bundle != null && bundle.containsKey(EXTRA_PLAYERS))
             playerList = bundle.getParcelableArrayList(EXTRA_PLAYERS);
-        if (playerList == null)
+
+        if (playerList == null) {
             onBackPressed();
+            return;
+        }
 
         // views
         mRecycler = findViewById(R.id.recycler);

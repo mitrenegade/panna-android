@@ -5,7 +5,6 @@ import android.content.Intent;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +12,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 
-import com.bumptech.glide.Glide;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.storage.FirebaseStorage;
@@ -66,12 +64,6 @@ public class PlayersAdapter extends RecyclerView.Adapter<PlayersAdapter.ViewHold
         final Player player = players.get(position);
 
         holder.name.setText(player.getName());
-//        if (player.getPhotoUrl() != null && !player.getPhotoUrl().isEmpty()){
-//            GeneralHelpers.glideImage(mContext, holder.photo, player.getPhotoUrl(),
-//                    R.drawable.ic_default_photo);
-//
-//        } else
-//            holder.photo.setImageResource(R.drawable.ic_default_photo);
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -91,16 +83,14 @@ public class PlayersAdapter extends RecyclerView.Adapter<PlayersAdapter.ViewHold
                 if (uri != null){
                     PhotoHelper.glideImage(mContext, holder.photo, uri.toString(), R.drawable.ic_default_photo);
                 } else {
-                    Glide.with(mContext).clear(holder.photo);
-                    holder.photo.setImageResource(R.drawable.ic_default_photo);
+                    PhotoHelper.clearImage(mContext, holder.photo);
                 }
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception exception) {
                 // Handle any errors
-                Glide.with(mContext).clear(holder.photo);
-                holder.photo.setImageResource(R.drawable.ic_default_photo);
+                PhotoHelper.clearImage(mContext, holder.photo);
             }
         });
     }

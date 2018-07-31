@@ -228,9 +228,7 @@
 
                 app:layout_constraintTop_toBottomOf="@+id/tv_players"
                 app:layout_constraintLeft_toLeftOf="parent"
-                android:layout_marginStart="56dp"
-
-                />
+                android:layout_marginStart="56dp" />
 
             <TextView
                 android:id="@+id/btn_attendees"
@@ -250,24 +248,23 @@
 
             <android.support.v7.widget.RecyclerView
                 android:id="@+id/players_recycler"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="92dp"
                 android:orientation="horizontal"
                 android:overScrollMode="never"
                 android:scrollbars="none"
                 app:layoutManager="android.support.v7.widget.LinearLayoutManager"
 
-                app:layout_constraintTop_toBottomOf="@+id/player_count"
-                app:layout_constraintLeft_toLeftOf="parent"
-                app:layout_constraintEnd_toEndOf="parent" />
+                app:layout_constraintTop_toBottomOf="@+id/player_count" />
 
             <ProgressBar
                 android:id="@+id/player_progressbar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
+                android:layout_marginTop="24dp"
 
-                app:layout_constraintTop_toBottomOf="@+id/iv_players"
+                app:layout_constraintTop_toBottomOf="@+id/player_count"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintRight_toRightOf="parent" />
 

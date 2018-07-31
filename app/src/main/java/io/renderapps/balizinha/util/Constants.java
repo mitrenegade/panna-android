@@ -5,7 +5,7 @@ package io.renderapps.balizinha.util;
  */
 
 public class Constants {
-    public static final String APP_VERSION = "0.3.5";
+    public static final String APP_VERSION = "0.3.6";
     public static final String PAYMENT_CONFIG_KEY = "paymentRequired";
     public static final int CACHE_EXPIRATION = 7200; // 1.5 hr
     public static final boolean IN_DEV_MODE = false;
