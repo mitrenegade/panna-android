@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.drawable.Drawable;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -21,11 +22,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.activity.AttendeesActivity;
-import io.renderapps.balizinha.activity.EventDetailsActivity;
-import io.renderapps.balizinha.activity.MainActivity;
-import io.renderapps.balizinha.activity.SetupProfileActivity;
-import io.renderapps.balizinha.activity.UserProfileActivity;
+import io.renderapps.balizinha.ui.event.attendees.AttendeesActivity;
+import io.renderapps.balizinha.ui.event.EventDetailsActivity;
+import io.renderapps.balizinha.ui.league.LeagueActivity;
+import io.renderapps.balizinha.ui.main.MainActivity;
+import io.renderapps.balizinha.ui.profile.SetupProfileActivity;
+import io.renderapps.balizinha.ui.profile.UserProfileActivity;
 
 import static io.renderapps.balizinha.util.Constants.PERMISSION_CAMERA;
 import static io.renderapps.balizinha.util.Constants.PERMISSION_GALLERY;
@@ -184,6 +186,13 @@ public class PhotoHelper {
             }
         }
 
+        if (context instanceof LeagueActivity) {
+            final LeagueActivity activity = (LeagueActivity) context;
+            if (activity.isDestroyed() || activity.isFinishing()) {
+                return false;
+            }
+        }
+
         if (context instanceof MainActivity) {
             final MainActivity activity = (MainActivity) context;
             return !activity.isDestroyed() && !activity.isFinishing();
@@ -222,6 +231,38 @@ public class PhotoHelper {
                     .asBitmap()
                     .apply(myOptions)
                     .load(url)
+                    .into(imageView);
+        }
+    }
+
+    public static void glideHeader(Context context, ImageView imageView, String url, int placeHolder){
+        RequestOptions myOptions = new RequestOptions()
+                .fitCenter()
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .placeholder(placeHolder);
+
+        // load photo
+        if (isValidContextForGlide(context)) {
+            Glide.with(context)
+                    .asBitmap()
+                    .apply(myOptions)
+                    .load(url)
+                    .into(imageView);
+        }
+    }
+
+    public static void glideDrawable(Context context, ImageView imageView, Drawable drawable){
+        RequestOptions myOptions = new RequestOptions()
+                .fitCenter()
+                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                .transform(new CircleTransform(context));
+
+        // load photo
+        if (isValidContextForGlide(context)) {
+            Glide.with(context)
+                    .asBitmap()
+                    .apply(myOptions)
+                    .load(drawable)
                     .into(imageView);
         }
     }

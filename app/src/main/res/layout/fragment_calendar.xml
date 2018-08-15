@@ -4,19 +4,20 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    tools:context="io.renderapps.balizinha.fragment.CalendarFragment">
+    tools:context=".ui.main.CalendarFragment">
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/calendar_toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
+        android:layout_height="?android:attr/actionBarSize"
+        android:background="?android:attr/colorPrimary"
         app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
         app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
 
     <android.support.v7.widget.RecyclerView
-        android:id="@+id/calendar_reycler"
+        android:id="@+id/calendar_recycler"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        android:overScrollMode="never"/>
 
 </LinearLayout>

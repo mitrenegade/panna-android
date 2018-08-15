@@ -3,9 +3,6 @@ package io.renderapps.balizinha.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import java.util.Calendar;
-
-import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.util.Constants;
 
 /**
@@ -25,6 +22,7 @@ public class Player implements Parcelable {
     private String promotionId;
     private String os;
     private String version;
+
     private boolean isOwner;
     private long createdAt;
 
@@ -39,6 +37,15 @@ public class Player implements Parcelable {
         this.createdAt = System.currentTimeMillis();
         this.version = Constants.APP_VERSION;
         this.os = Constants.OS_ANDROID;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Player){
+            Player player = (Player) obj;
+            return player.uid != null && player.uid.equals(this.uid);
+        }
+        return false;
     }
 
     // getters
@@ -144,34 +151,11 @@ public class Player implements Parcelable {
         isOwner = owner;
     }
 
-    // Parcelling part
-    public Player(Parcel in){
-        String[] data = new String[4];
 
-        in.readStringArray(data);
-        // the order needs to be the same as in writeToParcel() method
-        this.uid = data[0];
-        this.name = data[1];
-        this.photoUrl = data[2];
-        if (data[3] != null)
-            this.city = data[3];
-    }
+    /**************************************************************************************************
+     * Parcelable
+     *************************************************************************************************/
 
-    @Override
-    public int describeContents() {
-        return 0;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        // all we need for now when passing data through bundle
-        dest.writeStringArray(new String[] {
-                this.uid,
-                this.name,
-                this.photoUrl,
-                this.city
-                });
-    }
     public static final Parcelable.Creator CREATOR = new Parcelable.Creator() {
         public Player createFromParcel(Parcel in) {
             return new Player(in);
@@ -182,4 +166,48 @@ public class Player implements Parcelable {
         }
     };
 
+    private Player(Parcel in){
+
+        this.uid = in.readString();
+        this.name = in.readString();
+        this.city = in.readString();
+        this.info = in.readString();
+        this.email = in.readString();
+        this.photoUrl = in.readString();
+        this.deviceToken = in.readString();
+        this.fcmToken = in.readString();
+        this.promotionId = in.readString();
+        this.os = in.readString();
+        this.version = in.readString();
+
+        // boolean read as int, 1 == true, 0 == false
+        this.isOwner = in.readInt() != 0;
+
+        this.createdAt = in.readLong();
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(this.uid);
+        dest.writeString(this.name);
+        dest.writeString(this.city);
+        dest.writeString(this.info);
+        dest.writeString(this.email);
+        dest.writeString(this.photoUrl);
+        dest.writeString(this.deviceToken);
+        dest.writeString(this.fcmToken);
+        dest.writeString(this.promotionId);
+        dest.writeString(this.os);
+        dest.writeString(this.version);
+
+        dest.writeLong(this.createdAt);
+
+        // boolean written as int, 1 == true, 0 == false
+        dest.writeInt(isOwner ? 1 : 0);
+    }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
 }

@@ -7,7 +7,7 @@
     android:gravity="center"
     android:layout_gravity="center"
     android:orientation="vertical"
-    tools:context="io.renderapps.balizinha.activity.RegisterActivity">
+    tools:context=".ui.register.RegisterActivity">
 
         <EditText
             android:id="@+id/email"
@@ -76,7 +76,8 @@
             app:initialCornerAngle="50dp"
             app:finalCornerAngle="50dp"
             android:text="@string/register_button"
-            android:textColor="@android:color/white"/>
+            android:textColor="@android:color/white"
+            android:textStyle="bold"/>
 
         <!-- Link to Login Screen -->
 
@@ -86,12 +87,11 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginEnd="16dp"
-            android:layout_marginTop="24dp"
+            android:layout_marginTop="8dp"
             android:background="@null"
             android:text="@string/already_registered"
             android:textAllCaps="false"
             android:textColor="@color/colorPrimary"
-            android:fontFamily="sans-serif-light"
-            android:textSize="15sp" />
+            android:fontFamily="sans-serif"/>
 
     </LinearLayout>

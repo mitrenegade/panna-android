@@ -4,14 +4,14 @@ package io.renderapps.balizinha.module;
  * Created by joel on 1/3/18.
  */
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.adapter.rxjava.RxJavaCallAdapterFactory;
-import retrofit2.converter.gson.GsonConverterFactory;
+import retrofit2.converter.moshi.MoshiConverterFactory;
 
 /**
  * Factory to generate our Retrofit instance.
@@ -27,22 +27,23 @@ public class RetrofitFactory {
         if (mInstance == null) {
 
             HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-            // Set your desired log level. Use Level.BODY for debugging errors.
+
+            // log level- Level.BODY for debugging errors.
             logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
-            OkHttpClient.Builder httpClient = new OkHttpClient.Builder();
-            httpClient.addInterceptor(logging);
+            OkHttpClient.Builder httpClient = new OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(15, TimeUnit.SECONDS)
+                    .writeTimeout(15, TimeUnit.SECONDS);
 
-            Gson gson = new GsonBuilder()
-                    .setLenient()
-                    .create();
+            httpClient.addInterceptor(logging);
 
             // Adding Rx so the calls can be Observable, and adding a Gson converter with
             // leniency to make parsing the results simple.
             mInstance = new Retrofit.Builder()
-                    .addConverterFactory(GsonConverterFactory.create(gson))
+                    .addConverterFactory(MoshiConverterFactory.create())
                     .addCallAdapterFactory(RxJavaCallAdapterFactory.create())
-                    .baseUrl(BASE_URL_PROD)
+                    .baseUrl(BASE_URL_DEV)
                     .client(httpClient.build())
                     .build();
         }

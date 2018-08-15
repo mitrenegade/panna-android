@@ -1,5 +1,6 @@
 <resources>
-    <string name="app_name">Balizinha</string>
+    <string name="app_name">Panna</string>
+    <string name="panna_social_leagues">Panna Social Leagues</string>
 
     <!-- login/register -->
     <string name="login_button">Sign In</string>
@@ -27,22 +28,23 @@
     <string name="facebook_app_id">123063264768667</string>
     <string name="fb_login_protocol_scheme">fb123063264768667</string>
 
-    <!-- firebase -->
+    <!-- Main -->
     <string name="db_error">Oops…Looks like something went wrong, try again.</string>
     <string name="title_activity_main">MainActivity</string>
     <string name="title_account">Account</string>
     <string name="title_map">Upcoming</string>
-    <string name="toolbar_title_map">Upcoming Events</string>
+    <string name="title_league">Leagues</string>
+    <string name="toolbar_title_map">Games</string>
     <string name="title_calendar">Calendar</string>
 
     <!-- event -->
     <string name="create_event">Create Event</string>
     <string name="add_event">Add Event</string>
     <string name="no_events">There are currently no events near you</string>
-    <string name="upcoming_events">Upcoming events</string>
-    <string name="past_events">Past events</string>
+    <string name="upcoming_games">Upcoming Games</string>
+    <string name="past_games">Past Games</string>
     <string name="edit">Edit</string>
-    <string name="delete">Leave</string>
+    <string name="leave">Leave</string>
     <string name="preview">Preview</string>
     <string name="join">Join</string>
     <string name="none">None</string>
@@ -99,7 +101,7 @@
     <string name="no_payment_method">No payment method available</string>
     <string name="event_fee">This event as a fee. Please add a payment method in your profile.</string>
     <string name="confirm_payment">Confirm payment</string>
-    <string name="payment_failed">Failed to make a payment</string>
+    <string name="payment_failed">Failed to make a payment.</string>
     <string name="processing_payment">Processing payment…</string>
 
 
@@ -110,9 +112,21 @@
     <!-- Dialog -->
     <string name="cancel">Cancel</string>
     <string name="continue_button">Continue</string>
-    <string name="status_joining">Joining game...</string>
-    <string name="status_processing_payment">Processing payment...</string>
+    <string name="status_joining">Joining game…</string>
+    <string name="status_processing_payment">Processing payment…</string>
     <string name="leave_game">Leave Game</string>
     <string name="join_game">Join Game</string>
+    <string name="join_league">Join league</string>
+    <string name="leave_league">Leave league</string>
+
+
+    <!-- Leauges -->
+    <string name="your_leagues">Your Leagues</string>
+    <string name="other_leagues">Other leagues</string>
+
+    <!-- Notifications/Notification channel-->
+    <string name="notification_channel_name">Panna Social Leagues</string>
+    <string name="notification_channel_id" translatable="false">PANNA_NOTIFICATION_ID</string>
+
 
 </resources>

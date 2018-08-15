@@ -27,15 +27,10 @@ public class CloudService {
 
     private @NonNull
     ProgressListener mProgressListener;
-    private @NonNull
-    CompositeSubscription mCompositeSubscription;
-    private @NonNull StripeService mStripeService;
     private Retrofit retrofit;
 
     public CloudService(@NonNull ProgressListener progressListener) {
         retrofit = RetrofitFactory.getInstance();
-        mStripeService = retrofit.create(StripeService.class);
-        mCompositeSubscription = new CompositeSubscription();
         mProgressListener = progressListener;
     }
 
@@ -45,11 +40,13 @@ public class CloudService {
      * @param email users email address registered with firebase
      */
     public void validateStripeCustomer(String userId, String email){
+        final StripeService mStripeService = retrofit.create(StripeService.class);
+
         Map<String, String> customerMap = new HashMap<>();
         customerMap.put("userId", userId);
         customerMap.put("email", email);
 
-        mCompositeSubscription.add(mStripeService.validateStripeCustomer(customerMap)
+        new CompositeSubscription().add(mStripeService.validateStripeCustomer(customerMap)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<ResponseBody>() {
@@ -58,7 +55,9 @@ public class CloudService {
                         try {
                             String rawKey = response.string();
                             mProgressListener.onStringResponse(rawKey);
-                        } catch (IOException iox) {}
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
                     }
                 }, new Action1<Throwable>() {
                     @Override
@@ -68,5 +67,124 @@ public class CloudService {
                 }));
 
 
+    }
+
+    public void holdPaymentForEvent(@NonNull String userId, @NonNull String eventId){
+        final StripeService mStripeService = retrofit.create(StripeService.class);
+
+        new CompositeSubscription().add(mStripeService.holdPaymentForEvent(userId, eventId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<ResponseBody>() {
+                    @Override
+                    public void call(ResponseBody response) {
+                        try {
+                            String jsonResponse = response.string();
+                            mProgressListener.onStringResponse(jsonResponse);
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        mProgressListener.onStringResponse(throwable.getMessage());
+                    }
+                }));
+    }
+
+
+    public void getLeaguesForPlayer(String userId){
+        final LeagueService leagueService = retrofit.create(LeagueService.class);
+
+        new CompositeSubscription().add(leagueService.getLeaguesForPlayer(userId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<ResponseBody>() {
+                    @Override
+                    public void call(ResponseBody response) {
+                        try {
+                            String jsonResponse = response.string();
+                            mProgressListener.onStringResponse(jsonResponse);
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        mProgressListener.onStringResponse(throwable.getMessage());
+                    }
+                }));
+    }
+
+    public void getLeaguePlayers(String leagueId){
+        final LeagueService leagueService = retrofit.create(LeagueService.class);
+        new CompositeSubscription().add(leagueService.getPlayersForLeague(leagueId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<ResponseBody>() {
+                    @Override
+                    public void call(ResponseBody response) {
+                        try {
+                            String jsonResponse = response.string();
+                            mProgressListener.onStringResponse(jsonResponse);
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        mProgressListener.onStringResponse(throwable.getMessage());
+                    }
+                }));
+    }
+
+    public void getLeagueEvents(String leagueId){
+        final LeagueService leagueService = retrofit.create(LeagueService.class);
+        new CompositeSubscription().add(leagueService.getEventsForLeague(leagueId)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<ResponseBody>() {
+                    @Override
+                    public void call(ResponseBody response) {
+                        try {
+                            String jsonResponse = response.string();
+                            mProgressListener.onStringResponse(jsonResponse);
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        mProgressListener.onStringResponse(throwable.getMessage());
+                    }
+                }));
+    }
+
+    public void changeLeaguePlayerStatus(String userId, String leagueId, String status){
+        final LeagueService leagueService = retrofit.create(LeagueService.class);
+
+        new CompositeSubscription().add(leagueService.changeLeaguePlayerStatus(userId, leagueId, status)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<ResponseBody>() {
+                    @Override
+                    public void call(ResponseBody response) {
+                        try {
+                            String jsonResponse = response.string();
+                            mProgressListener.onStringResponse(jsonResponse);
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        mProgressListener.onStringResponse(throwable.getMessage());
+                    }
+                }));
     }
 }

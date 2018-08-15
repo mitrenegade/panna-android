@@ -10,6 +10,7 @@ public class Action {
     public static final String ACTION_CREATE = "createEvent";
     public static final String ACTION_CHAT = "chat";
     public static final String ACTION_PAID = "payForEvent";
+    public static final String ACTION_HOLD = "holdPaymentForEvent";
 
     private double createdAt;
     private String event;
@@ -53,7 +54,6 @@ public class Action {
     public String getEvent() {
         return event;
     }
-
 
     public void setMessage(String message) {
         this.message = message;

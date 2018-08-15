@@ -1,32 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:orientation="vertical"
-    android:paddingTop="16dp"
-    android:paddingBottom="16dp"
-    android:paddingStart="8dp"
-    android:paddingEnd="8dp"
-    android:gravity="center">
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="40dp"
+    android:layout_height="40dp"
+    android:layout_marginStart="16dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <include
+        android:id="@+id/default_photo"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        layout="@layout/layout_default_photo"
+        android:visibility="gone"/>
 
     <ImageView
-        android:id="@+id/player_photo"
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        app:srcCompat="@drawable/ic_default_photo"
-        android:scaleType="centerCrop"/>
+        android:id="@+id/photo"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        app:srcCompat="@drawable/ic_default_photo"/>
 
-    <TextView
-        android:id="@+id/player_name"
-        android:layout_width="wrap_content"
-        android:layout_height="20dp"
-        android:textColor="@color/textSecondary"
-        android:fontFamily="sans-serif-condensed"
-        android:textSize="16sp"
-        android:maxLines="1"
-        android:maxLength="15"
-        android:ellipsize="end"
-        tools:text="Joel Goncalves AKA Bobby"/>
-</LinearLayout>
+</FrameLayout>

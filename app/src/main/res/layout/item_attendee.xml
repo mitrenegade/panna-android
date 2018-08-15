@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:focusable="true"
+    android:clickable="true"
+    android:background="?android:attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/list_icon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="@dimen/ma_list_item_edges_padding"
+        android:scaleType="fitCenter"
+        app:srcCompat="@drawable/ic_default_photo"
+        tools:src="@drawable/ic_default_photo"/>
+
+    <include
+        android:id="@+id/default_photo"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="@dimen/ma_list_item_edges_padding"
+        layout="@layout/layout_default_photo"
+        android:visibility="gone"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="72dp"
+        android:layout_marginTop="@dimen/ma_list_item_edges_padding"
+        android:layout_marginBottom="@dimen/ma_list_item_edges_padding"
+        android:layout_marginEnd="@dimen/ma_list_item_edges_padding"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/list_primary_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/ma_list_item_line_spacing"
+            android:textColor="@color/textPrimary"
+            android:textSize="@dimen/ma_list_item_primary_text"
+            tools:text="Two-line item"/>
+
+        <TextView
+            android:id="@+id/list_secondary_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/textSecondary"
+            android:textSize="@dimen/ma_list_item_secondary_text"
+            tools:text="Secondary text" />
+
+    </LinearLayout>
+</RelativeLayout>

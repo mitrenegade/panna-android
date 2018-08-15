@@ -5,10 +5,10 @@ package io.renderapps.balizinha.util;
  */
 
 public class Constants {
-    public static final String APP_VERSION = "0.3.6";
+    public static final String APP_VERSION = "0.3.7";
     public static final String PAYMENT_CONFIG_KEY = "paymentRequired";
     public static final int CACHE_EXPIRATION = 7200; // 1.5 hr
-    public static final boolean IN_DEV_MODE = false;
+    public static final boolean IN_DEV_MODE = true;
 
     // firebase endpoints
     public static final String REF_ACTIONS = "actions";
@@ -16,6 +16,9 @@ public class Constants {
     public static final String REF_EVENTS = "events";
     public static final String REF_EVENT_USERS = "eventUsers";
     public static final String REF_USER_EVENTS = "userEvents";
+    public static final String REF_LEAGUES = "leagues";
+    public static final String REF_LEAGUE_PLAYERS = "leaguePlayers";
+    public static final String REF_CHARGES = "charges";
 
     // requests and permissions
     public static final int REQUEST_CAMERA = 100;

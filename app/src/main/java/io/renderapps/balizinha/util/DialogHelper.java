@@ -10,7 +10,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.activity.SetupProfileActivity;
+import io.renderapps.balizinha.ui.profile.SetupProfileActivity;
 
 /**
  * Created by joel on 7/23/18.
