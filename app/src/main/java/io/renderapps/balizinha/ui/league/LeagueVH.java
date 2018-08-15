@@ -6,7 +6,6 @@ import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -14,23 +13,15 @@ import android.widget.TextView;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.storage.FirebaseStorage;
-import com.squareup.moshi.JsonAdapter;
-import com.squareup.moshi.Moshi;
 
-import org.json.JSONException;
-import org.json.JSONObject;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.model.Event;
 import io.renderapps.balizinha.model.League;
-import io.renderapps.balizinha.service.CloudService;
 import io.renderapps.balizinha.ui.main.MainActivity;
 import io.renderapps.balizinha.util.PhotoHelper;
 
@@ -62,9 +53,6 @@ class LeagueVH extends RecyclerView.ViewHolder {
 
         setLeaguePlayers(league.getPlayerCount());
         setLeagueEvents(league.getEventCount());
-
-//        playersForLeague(league.getId());
-//        eventsForLeague(league.getId());
 
         itemView.setOnClickListener(new View.OnClickListener() {
             @Override

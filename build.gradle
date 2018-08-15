@@ -1,16 +1,58 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    ext.kotlin_version = '1.2.30'
+
     repositories {
         jcenter()
         google()
     }
+
+    ext {
+        // SDK and tools
+        buildToolsVersion = '27.0.3'
+        compileSdkVersion = 28
+        minSdkVersion = 21
+        targetSdkVersion = 28
+
+        kotlinVersion = '1.2.30'
+        gradleVersion = '3.1.4'
+        googleServicesVersion = '4.1.0'
+
+        // Application dependencies
+        supportLibraryVersion = '27.1.1'
+        constraintLayoutVersion = '2.0.0-alpha2'
+        multidexVersion = '1.0.3'
+
+        mapsVersion = '15.0.1'
+        butterknife = '8.8.1'
+        glideVersion = '4.5.0'
+        archVersion = '1.1.1'
+
+        crashlyticsVersion = '2.9.4'
+        facebookVersion = '4.29.0'
+        stripeVersion = '6.1.2'
+
+        retroVersion = '2.4.0'
+        retroRx2Adapter = '2.2.0'
+        retroMoshiConverter = '2.3.0'
+        moshiVersion = '1.6.0'
+        rxjavaVersion = '2.1.9'
+        rxandroidVersion = '2.0.2'
+        okhttp3Interceptor = '3.9.0'
+
+        loadingButtonVersion = '1.12.1'
+        sectionedRecyclerVersion = '1.2.0'
+
+        // Test dependencies
+        junitVersion = '4.12'
+        espressoVersion = '3.0.1'
+    }
+
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.1.4'
-        classpath 'com.google.gms:google-services:4.1.0'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath "org.jetbrains.kotlin:kotlin-android-extensions:$kotlin_version"
+        classpath "com.android.tools.build:gradle:$gradleVersion"
+        classpath "com.google.gms:google-services:$googleServicesVersion"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+        classpath "org.jetbrains.kotlin:kotlin-android-extensions:$kotlinVersion"
     }
 }
 
@@ -23,20 +65,4 @@ allprojects {
 
 task clean(type: Delete) {
     delete rootProject.buildDir
-}
-
-ext {
-    // SDK and tools
-    buildToolsVersion = "27.0.3"
-    compileSdkVersion = 28
-    minSdkVersion = 21
-    targetSdkVersion = 28
-
-    // Application dependencies
-    supportLibraryVersion = '27.1.1'
-
-    // Butterknife
-    butterknife = '8.8.1'
-
-    lifecycle_version = "1.1.1"
 }

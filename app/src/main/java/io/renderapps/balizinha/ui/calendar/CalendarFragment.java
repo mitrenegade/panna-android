@@ -1,4 +1,4 @@
-package io.renderapps.balizinha.ui.main;
+package io.renderapps.balizinha.ui.calendar;
 
 import android.os.Bundle;
 import android.support.annotation.NonNull;

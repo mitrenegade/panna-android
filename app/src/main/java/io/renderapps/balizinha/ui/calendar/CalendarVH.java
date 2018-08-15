@@ -1,4 +1,4 @@
-package io.renderapps.balizinha.ui.main;
+package io.renderapps.balizinha.ui.calendar;
 
 import android.content.Context;
 import android.content.DialogInterface;
@@ -29,6 +29,7 @@ import butterknife.ButterKnife;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Event;
 import io.renderapps.balizinha.ui.event.EventDetailsActivity;
+import io.renderapps.balizinha.ui.main.MainActivity;
 
 public class CalendarVH extends RecyclerView.ViewHolder {
     private Context mContext;

@@ -13,7 +13,6 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -42,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.service.notification.NotificationService;
+import io.renderapps.balizinha.ui.calendar.CalendarFragment;
 import io.renderapps.balizinha.ui.league.LeagueFragment;
 import io.renderapps.balizinha.ui.profile.SetupProfileActivity;
 import io.renderapps.balizinha.model.Player;
@@ -150,7 +150,6 @@ public class MainActivity extends AppCompatActivity {
         // fetch current user
         fetchCurrentUser();
 
-        Log.d("debugUserId", firebaseUser.getUid());
         NotificationService.storeFcmToken();
     }
 
@@ -270,9 +269,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void fetchCurrentUser(){
         final Context mContext = this;
-
-        Log.d("playerId", firebaseUser.getUid());
-
         valueEventListener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {

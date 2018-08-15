@@ -9,13 +9,15 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
+
 import io.renderapps.balizinha.module.RetrofitFactory;
 import okhttp3.ResponseBody;
 import retrofit2.Retrofit;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
-import rx.schedulers.Schedulers;
-import rx.subscriptions.CompositeSubscription;
 
 /**
  * Generates ephemeral key required to create customer session with Stripe
@@ -26,7 +28,7 @@ public class EphemeralKeyGenerator implements EphemeralKeyProvider {
     private @NonNull
     ProgressListener mProgressListener;
     private @NonNull
-    CompositeSubscription mCompositeSubscription;
+    CompositeDisposable mCompositeSubscription;
     private @NonNull StripeService mStripeService;
     private String customerId;
 
@@ -34,7 +36,7 @@ public class EphemeralKeyGenerator implements EphemeralKeyProvider {
     public EphemeralKeyGenerator(@NonNull ProgressListener progressListener, String customerId) {
         Retrofit retrofit = RetrofitFactory.getInstance();
         mStripeService = retrofit.create(StripeService.class);
-        mCompositeSubscription = new CompositeSubscription();
+        mCompositeSubscription = new CompositeDisposable();
         mProgressListener = progressListener;
         this.customerId = customerId;
     }
@@ -50,21 +52,23 @@ public class EphemeralKeyGenerator implements EphemeralKeyProvider {
                 mStripeService.createEphemeralKey(apiParamMap)
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
-                        .subscribe(new Action1<ResponseBody>() {
+                        .subscribeWith(new DisposableObserver<ResponseBody>() {
                             @Override
-                            public void call(ResponseBody response) {
+                            public void onComplete() {
+                            }
+
+                            @Override
+                            public void onError(Throwable e) {
+                                mProgressListener.onStringResponse(e.getMessage());
+                            }
+
+                            @Override
+                            public void onNext(ResponseBody response) {
                                 try {
                                     String rawKey = response.string();
                                     keyUpdateListener.onKeyUpdate(rawKey);
                                     mProgressListener.onStringResponse(rawKey);
-                                } catch (IOException iox) {
-
-                                }
-                            }
-                        }, new Action1<Throwable>() {
-                            @Override
-                            public void call(Throwable throwable) {
-                                mProgressListener.onStringResponse(throwable.getMessage());
+                                } catch (IOException iox) { }
                             }
                         }));
     }

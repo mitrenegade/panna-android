@@ -1,4 +1,4 @@
-package io.renderapps.balizinha.ui.main;
+package io.renderapps.balizinha.ui.calendar;
 
 import android.content.Context;
 import android.support.v7.widget.RecyclerView;

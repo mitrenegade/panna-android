@@ -193,12 +193,6 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
 
                     }
                 });
-
-//                if (!CommonUtils.isValidFirebaseName(currentUser)) {
-//                    DialogHelper.showAddNameDialog(((MainActivity) mContext));
-//                    return;
-//                }
-
             }
         });
     }
@@ -218,8 +212,6 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
                         final String status = child.child("status").getValue(String.class);
 
                         if (pid != null && status != null && pid.equals(uid) && status.equals("succeeded")){
-
-                            Log.d("debugJoin", "user has already paid");
 
                             // user has already paid
                             onUserJoin(event);
@@ -394,7 +386,6 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
                 }
 
                 try {
-                    Log.d("holdPaymentRes", response);
                     JSONObject jsonObject = new JSONObject(response);
                     if (jsonObject.has("error")){
                         showFailedPayment();

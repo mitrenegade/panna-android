@@ -16,7 +16,6 @@ import android.support.v7.widget.Toolbar;
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -115,11 +114,6 @@ public class EventDetailsActivity extends AppCompatActivity {
             showLeaveDialog();
             return;
         }
-
-//        if (!CommonUtils.isValidFirebaseName(firebaseUser)) {
-//            DialogHelper.showAddNameDialog(this);
-//            return;
-//        }
 
         if (playerCount >= event.maxPlayers) {
             Toast.makeText(this, getString(R.string.game_full),
@@ -617,13 +611,6 @@ public class EventDetailsActivity extends AppCompatActivity {
                         final String status = child.child("status").getValue(String.class);
 
                         if (pid != null && status != null && pid.equals(firebaseUser.getUid()) && status.equals("succeeded")){
-
-                            Log.d("debugJoin", firebaseUser.getUid());
-                            Log.d("debugJoin", status);
-
-                            Log.d("debugJoin", "user has already paid");
-
-
                             onUserJoin();
                             return;
                         }
@@ -777,7 +764,6 @@ public class EventDetailsActivity extends AppCompatActivity {
                 }
 
                 try {
-                    Log.d("holdPaymentRes", response);
                     JSONObject jsonObject = new JSONObject(response);
                     if (jsonObject.has("error")){
                         showFailedPayment();

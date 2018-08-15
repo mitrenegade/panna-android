@@ -70,7 +70,7 @@ public class PannaMessagingService extends FirebaseMessagingService {
 
         Uri defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(context, context.getString(R.string.notification_channel_id))
-                .setSmallIcon(R.drawable.ic_stat_pi)
+                .setSmallIcon(R.drawable.notification_logo)
                 .setColor(Color.parseColor("#577965"))  // small icon background color
 //                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.ic_logo))
                 .setContentTitle(title)
