@@ -19,7 +19,6 @@ import com.google.firebase.storage.FirebaseStorage;
 import java.util.ArrayList;
 
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.ui.league.MembersAdapter;
 import io.renderapps.balizinha.ui.profile.UserProfileActivity;
 import io.renderapps.balizinha.model.Player;
 import io.renderapps.balizinha.util.PhotoHelper;

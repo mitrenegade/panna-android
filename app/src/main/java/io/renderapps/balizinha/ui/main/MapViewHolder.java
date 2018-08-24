@@ -68,7 +68,7 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
     private TextView availability;
     private Button joinButton;
 
-    public MapViewHolder(View itemView, Context context) {
+    MapViewHolder(View itemView, Context context) {
         super(itemView);
         mContext = context;
 
@@ -172,7 +172,6 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
                 currentUser = FirebaseAuth.getInstance().getCurrentUser();
                 if (currentUser == null) return;
 
-
                 PlayerService.getPlayer(currentUser.getUid(), new PlayerService.PlayerCallback() {
                     @Override
                     public void onSuccess(@Nullable Player player) {
@@ -200,8 +199,8 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
 
     // has user paid for game already, left and is now joining again
     private void hasUserAlreadyPaid(final Event event, final String uid){
-        paymentRef.child(event.getEid()).keepSynced(true);
 
+        paymentRef.child(event.getEid()).keepSynced(true);
         paymentRef.child(event.getEid()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
@@ -212,7 +211,6 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
                         final String status = child.child("status").getValue(String.class);
 
                         if (pid != null && status != null && pid.equals(uid) && status.equals("succeeded")){
-
                             // user has already paid
                             onUserJoin(event);
                             return;
@@ -407,8 +405,8 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
 
     private boolean isValidContext() {
         return mContext instanceof MainActivity && !((MainActivity) mContext).isDestroyed() && !((MainActivity) mContext).isFinishing();
-
     }
+
     private void showFailedPayment(){
         if (isValidContext())
             Toast.makeText(mContext, mContext.getString(R.string.payment_failed), Toast.LENGTH_LONG).show();

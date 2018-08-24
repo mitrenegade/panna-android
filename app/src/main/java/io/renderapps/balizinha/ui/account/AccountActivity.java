@@ -48,8 +48,6 @@ public class AccountActivity extends AppCompatActivity {
     private boolean paymentRequired;
     private int cacheExpiration;
     private String customerId = "";
-    private boolean didSetAdapter = false;
-    private boolean initiatedCustomerSession = false;
 
     // firebase
     private DatabaseReference databaseRef;
@@ -77,6 +75,7 @@ public class AccountActivity extends AppCompatActivity {
         databaseRef = FirebaseDatabase.getInstance().getReference();
 
         setupRecycler();
+        fetchCustomerId();
         fetchPaymentRequired();
     }
 
@@ -86,15 +85,14 @@ public class AccountActivity extends AppCompatActivity {
     }
 
     public void setAdapter(final int optionsId){
+        if (isDestroyed() || isFinishing()) return;
+
         final AccountActivity accountActivity = this;
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 String[] accountOptions = getResources().getStringArray(optionsId);
                 mRecycler.setAdapter(new AccountAdapter(accountActivity, accountOptions, paymentRequired));
-                didSetAdapter = true;
-                if (initiatedCustomerSession)
-                    mProgress.setVisibility(View.GONE);
             }
         });
     }
@@ -106,13 +104,9 @@ public class AccountActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onResume() {
-        super.onResume();
-        if (customerId.isEmpty()) {
-            fetchCustomerId();
-        } else {
-            createCustomerSessions(customerId);
-        }
+    public void onBackPressed() {
+        super.onBackPressed();
+        finish();
     }
 
     @Override
@@ -142,7 +136,7 @@ public class AccountActivity extends AppCompatActivity {
         databaseRef.child("stripe_customers")
                 .child(firebaseUser.getUid())
                 .child("customer_id")
-                .addValueEventListener(new ValueEventListener() {
+                .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         if (dataSnapshot.exists() && dataSnapshot.getValue() != null){
@@ -176,9 +170,9 @@ public class AccountActivity extends AppCompatActivity {
                 new EphemeralKeyGenerator.ProgressListener() {
                     @Override
                     public void onStringResponse(String string) {
-                        initiatedCustomerSession = true;
-                        if (didSetAdapter)
-                            mProgress.setVisibility(View.GONE);
+                        if (string.startsWith("Error: ")) {
+                            // failed to initialize customer session
+                        }
                     }
                 }, customerId));
 
@@ -199,10 +193,14 @@ public class AccountActivity extends AppCompatActivity {
                                 updateDb(source.getId(), cardData);
                             }
                         }
+
+                        mProgress.setVisibility(View.GONE);
                     }
 
                     @Override
-                    public void onError(int errorCode, @Nullable String errorMessage) {}
+                    public void onError(int errorCode, @Nullable String errorMessage) {
+                        mProgress.setVisibility(View.GONE);
+                    }
                 });
     }
 
@@ -215,10 +213,10 @@ public class AccountActivity extends AppCompatActivity {
 
                 paymentRequired = remoteConfig.getBoolean(Constants.PAYMENT_CONFIG_KEY);
 
-                 // check if user has added a payment method
+                // check if user has added a payment method
                 if (paymentRequired) {
                     verifyPaymentMethod();
-                    } else {
+                } else {
                     setAdapter(R.array.accountOptionsWithoutPayment);
                 }
             }
@@ -237,6 +235,7 @@ public class AccountActivity extends AppCompatActivity {
                             selectedOption = R.array.accountOptionsWithPayment;
                         else
                             selectedOption = R.array.accountOptions;
+
                         // set adapter
                         setAdapter(selectedOption);
                     }
@@ -245,6 +244,7 @@ public class AccountActivity extends AppCompatActivity {
                     public void onCancelled(@NonNull DatabaseError databaseError) {}
                 });
     }
+
 
     public void updateDb(final String sourceId, final SourceCardData cardData){
         if (!isDestroyed() && !isFinishing())
@@ -275,11 +275,5 @@ public class AccountActivity extends AppCompatActivity {
                     @Override
                     public void onCancelled(@NonNull DatabaseError databaseError) {}
                 });
-    }
-
-    @Override
-    public void onBackPressed() {
-        super.onBackPressed();
-        finish();
     }
 }

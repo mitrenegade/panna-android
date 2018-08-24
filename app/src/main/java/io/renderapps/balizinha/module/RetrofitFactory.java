@@ -43,7 +43,7 @@ public class RetrofitFactory {
             mInstance = new Retrofit.Builder()
                     .addConverterFactory(MoshiConverterFactory.create())
                     .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
-                    .baseUrl(BASE_URL_DEV)
+                    .baseUrl(BASE_URL_PROD)
                     .client(httpClient.build())
                     .build();
         }

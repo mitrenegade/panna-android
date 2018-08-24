@@ -12,8 +12,6 @@ import com.google.firebase.iid.InstanceIdResult;
 import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
 
 public class NotificationService {
-
-
     public static void storeFcmToken(){
         // Get token
         FirebaseInstanceId.getInstance().getInstanceId().addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
