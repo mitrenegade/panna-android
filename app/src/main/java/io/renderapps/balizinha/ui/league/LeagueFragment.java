@@ -124,8 +124,8 @@ public class LeagueFragment extends Fragment {
         if (getActivity() == null) return;
 
         sectionAdapter = new SectionedRecyclerViewAdapter();
-        userLeagueSection = new LeagueSection(getActivity(), sectionAdapter, "Your Leagues", userLeagues);
-        leagueSection = new LeagueSection(getActivity(), sectionAdapter, "Other Leagues", otherLeagues);
+        userLeagueSection = new LeagueSection(getActivity(), sectionAdapter, getString(R.string.your_leagues), userLeagues);
+        leagueSection = new LeagueSection(getActivity(), sectionAdapter, getString(R.string.other_leagues), otherLeagues);
 
         userLeagueSection.setHasFooter(false);
         leagueSection.setHasFooter(false);

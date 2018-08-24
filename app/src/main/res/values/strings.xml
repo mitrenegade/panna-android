@@ -118,6 +118,7 @@
     <string name="join_game">Join Game</string>
     <string name="join_league">Join league</string>
     <string name="leave_league">Leave league</string>
+    <string name="private_league">League is private</string>
 
 
     <!-- Leauges -->

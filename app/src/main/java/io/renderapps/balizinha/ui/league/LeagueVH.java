@@ -43,17 +43,18 @@ class LeagueVH extends RecyclerView.ViewHolder {
         this.mContext = context;
     }
 
-    public void bind(final League league){
+    public void bind(final League league, final boolean isOtherLeague){
+
+        // reset
+        location.setText("");
+        description.setText("");
+        tags.setText("");
+
+        logo.setAlpha((float)1.0);
+        title.setAlpha((float)1.0);
+        location.setAlpha((float)1.0);
+
         title.setText(league.getName());
-        setLocation(league.getCity());
-        setDescription(league.getInfo());
-
-        setTags(league.getTags());
-        setLogo(league.getId());
-
-        setLeaguePlayers(league.getPlayerCount());
-        setLeagueEvents(league.getEventCount());
-
         itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -66,6 +67,22 @@ class LeagueVH extends RecyclerView.ViewHolder {
                 }
             }
         });
+
+        if (league.isPrivate() && isOtherLeague) {
+            // private league
+            setLocation("Private");
+            logo.setAlpha((float)0.5);
+            title.setAlpha((float)0.5);
+            location.setAlpha((float)0.5);
+        } else {
+            setLocation(league.getCity());
+            setDescription(league.getInfo());
+            setTags(league.getTags());
+        }
+
+        setLogo(league.getId());
+        setLeaguePlayers(league.getPlayerCount());
+        setLeagueEvents(league.getEventCount());
     }
 
     private void setLocation(String city){
@@ -102,7 +119,6 @@ class LeagueVH extends RecyclerView.ViewHolder {
     }
 
     private void setLogo(String leagueId){
-
         FirebaseStorage.getInstance().getReference()
                 .child("images/league").child(leagueId).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
             @Override

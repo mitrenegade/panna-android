@@ -46,7 +46,7 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
     private AccountActivity accountActivity;
     private boolean paymentRequired;
 
-    public AccountAdapter(AccountActivity accountActivity, String[] options, boolean paymentRequired){
+    AccountAdapter(AccountActivity accountActivity, String[] options, boolean paymentRequired){
         this.accountActivity = accountActivity;
         this.options = options;
         this.paymentRequired = paymentRequired;
@@ -98,6 +98,7 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                                     if (info.getProviderId().equals("facebook.com"))
                                         LoginManager.getInstance().logOut();
                             }
+
                             CustomerSession.endCustomerSession();
                             auth.signOut();
                             accountActivity.finish();

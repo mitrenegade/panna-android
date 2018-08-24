@@ -18,7 +18,6 @@ import com.google.firebase.storage.FirebaseStorage;
 import java.util.List;
 
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.ui.event.PlayersAdapter;
 import io.renderapps.balizinha.ui.profile.UserProfileActivity;
 import io.renderapps.balizinha.model.Player;
 import io.renderapps.balizinha.util.PhotoHelper;

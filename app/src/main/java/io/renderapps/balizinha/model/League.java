@@ -130,6 +130,10 @@ public class League implements Parcelable {
         isPrivate = aPrivate;
     }
 
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
     public void setTags(ArrayList<String> tags) {
         this.tags = tags;
     }
@@ -185,4 +189,7 @@ public class League implements Parcelable {
     public void setPlayerCount(int playerCount) {
         this.playerCount = playerCount;
     }
+
+
+
 }

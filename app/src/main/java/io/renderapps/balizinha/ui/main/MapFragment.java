@@ -19,6 +19,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -182,11 +183,15 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     public void onStop() {
 //        mGoogleApiClient.disconnect();
         super.onStop();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
         if (databaseRef != null && childEventListener != null)
             databaseRef.child("userEvents").child(firebaseUser.getUid()).removeEventListener(childEventListener);
 
     }
-
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {

@@ -7,7 +7,6 @@ import android.support.design.widget.CollapsingToolbarLayout
 import android.support.v7.app.AlertDialog
 import android.support.v7.widget.LinearLayoutManager
 import android.support.v7.widget.RecyclerView
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -163,8 +162,17 @@ class LeagueActivity : AppCompatActivity() {
         if (!isDestroyed && !isFinishing){
             runOnUiThread {
                 joinLeaveButton.visibility =  if (enable) View.VISIBLE else View.GONE
-                joinLeaveButton.text =  if (isMember) getString(R.string.leave_league) else getString(R.string.join_league)
-                joinLeaveButton.background =  if (isMember) getDrawable(R.drawable.background_leave_button) else getDrawable(R.drawable.background_join_league)
+
+                if (isMember){
+                    joinLeaveButton.background = getDrawable(R.drawable.background_leave_button)
+                    joinLeaveButton.text = getString(R.string.leave_league)
+                } else {
+                    joinLeaveButton.background =  if (league.isPrivate) getDrawable(R.drawable.bg_join_league_disabled) else getDrawable(R.drawable.background_join_league)
+                    joinLeaveButton.text = if (league.isPrivate) getString(R.string.private_league) else getString(R.string.join_league)
+
+                    if (league.isPrivate)
+                        joinLeaveButton.isEnabled = false
+                }
             }
         }
     }
@@ -180,7 +188,6 @@ class LeagueActivity : AppCompatActivity() {
                 Toast.makeText(this, "Please log in to continue.", Toast.LENGTH_LONG).show()
                 return
             }
-
         }
 
         PlayerService.getPlayer(currUser.uid, PlayerService.PlayerCallback { player ->
@@ -236,6 +243,11 @@ class LeagueActivity : AppCompatActivity() {
     @OnClick(R.id.tags_recycler)
     fun showTagDialog(){
 
+        if (!isMember && league.isPrivate){
+            Toast.makeText(this@LeagueActivity, "Only members can add tags for a private league.", Toast.LENGTH_LONG).show()
+            return
+        }
+
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Add a tag")
 
@@ -247,9 +259,6 @@ class LeagueActivity : AppCompatActivity() {
         }
 
         builder.setNeutralButton("Add"){dialog,_ ->
-
-            Log.d("debugTag", "reached")
-
             addTag(view.edit_tag.text.toString())
             dialog.cancel()
         }
@@ -297,6 +306,7 @@ class LeagueActivity : AppCompatActivity() {
                                 }
                             }
 
+                            progress.visibility = View.GONE
                             updateJoinLeaveButton(true)
                         }
 
@@ -326,17 +336,12 @@ class LeagueActivity : AppCompatActivity() {
                         val index = members.indexOf(player)
                         if (index > -1){
                             members.removeAt(index)
-
-                            Log.d("debugUsers", "userLeft")
-
                             updateMembersAdapter(false, index)
                         }
                         return
                     } else {
                         // user joined league
                         if (userId != null) {
-                            Log.d("debugUsers", "userJoined")
-
                             fetchUser(userId)
                         }
                     }

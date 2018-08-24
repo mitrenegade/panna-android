@@ -17,6 +17,7 @@ import io.github.luizgrp.sectionedrecyclerviewadapter.SectionParameters;
 import io.github.luizgrp.sectionedrecyclerviewadapter.SectionedRecyclerViewAdapter;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.League;
+import io.renderapps.balizinha.ui.main.MainActivity;
 
 public class LeagueSection extends Section {
 
@@ -54,7 +55,15 @@ public class LeagueSection extends Section {
     @Override
     public void onBindItemViewHolder(RecyclerView.ViewHolder holder, int position) {
         final League league = leagues.get(position);
-        ((LeagueVH) holder).bind(league);
+        boolean isOtherLeague = false;
+
+        if (context != null && context instanceof MainActivity){
+            if (!((MainActivity) context).isDestroyed() && !((MainActivity) context).isFinishing()){
+                isOtherLeague = header.equals(context.getString(R.string.other_leagues));
+            }
+        }
+
+        ((LeagueVH) holder).bind(league, isOtherLeague);
     }
 
 

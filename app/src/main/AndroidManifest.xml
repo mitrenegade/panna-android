@@ -12,7 +12,7 @@
 
     <uses-feature android:name="android.hardware.camera" />
 
-    <meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />
+    <!--<meta-data android:name="firebase_crashlytics_collection_enabled" android:value="false" />-->
 
     <application
         android:name=".AppController"
@@ -36,7 +36,7 @@
             android:name=".ui.profile.SetupProfileActivity"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar"
-            android:windowSoftInputMode="adjustResize" />
+            android:windowSoftInputMode="adjustPan" />
         <activity
             android:name=".ui.main.MainActivity"
             android:label="@string/title_activity_main"
@@ -93,7 +93,8 @@
             android:theme="@style/AppTheme.NoActionBar" />
         <activity android:name=".ui.event.attendees.AttendeesActivity" />
 
-        <activity android:name=".ui.account.AccountActivity" />
+        <activity android:name=".ui.account.AccountActivity"
+            android:screenOrientation="portrait" />
         <activity android:name=".ui.league.LeagueActivity"
             android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar"/>
@@ -122,7 +123,6 @@
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_color"
             android:resource="@color/colorPrimary" />
-
     </application>
 
 </manifest>

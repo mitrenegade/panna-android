@@ -41,11 +41,12 @@ public class CircleTransform implements Transformation<Bitmap> {
         this(Glide.get(context).getBitmapPool());
     }
 
-    public CircleTransform(BitmapPool pool) {
+    private CircleTransform(BitmapPool pool) {
         this.mBitmapPool = pool;
     }
 
 
+    @NonNull
     @Override
     public Resource<Bitmap> transform(@NonNull Context context, @NonNull Resource<Bitmap> resource, int outWidth, int outHeight) {
         Bitmap source = resource.get();
