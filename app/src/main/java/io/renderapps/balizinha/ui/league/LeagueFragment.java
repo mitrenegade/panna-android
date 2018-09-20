@@ -233,11 +233,8 @@ public class LeagueFragment extends Fragment {
 
                 try {
                     JSONObject jsonObject = new JSONObject(response);
-
                     if (!jsonObject.isNull("result")) {
-
                         JSONObject resultsObj = jsonObject.getJSONObject("result");
-
                         Iterator<String> ids = resultsObj.keys();
 
                         while (ids.hasNext()) {

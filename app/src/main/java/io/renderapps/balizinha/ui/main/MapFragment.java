@@ -1,25 +1,13 @@
 package io.renderapps.balizinha.ui.main;
 
-import android.Manifest;
-import android.app.AlertDialog;
-import android.app.Dialog;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.location.Location;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -28,20 +16,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
-import android.widget.Toast;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdate;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.MapView;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -51,21 +28,33 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.Query;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
+import com.squareup.moshi.JsonAdapter;
+import com.squareup.moshi.Moshi;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 
+import butterknife.BindView;
+import butterknife.ButterKnife;
 import io.renderapps.balizinha.R;
 
-import io.renderapps.balizinha.ui.account.AccountActivity;
+import io.renderapps.balizinha.model.EventJsonAdapter;
+import io.renderapps.balizinha.service.CloudService;
 import io.renderapps.balizinha.model.Event;
+import io.renderapps.balizinha.util.ActivityLauncher;
+import io.renderapps.balizinha.util.CommonUtils;
+import io.renderapps.balizinha.util.Constants;
 
-public class MapFragment extends Fragment implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
+public class MapFragment extends Fragment {
 
     // properties
-    private Date todaysDate;
     private RecyclerView.Adapter mAdapter;
     private List<Event> currentEvents;
     private List<String> currentEventsIds;
@@ -73,47 +62,23 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
 
     // firebase
     private FirebaseUser firebaseUser;
+    private FirebaseRemoteConfig remoteConfig;
     private DatabaseReference databaseRef;
     private DatabaseReference eventsRef;
     private ChildEventListener childEventListener;
     private Query eventQuery;
 
-    // map
-    private MapView mMapView;
-    private LocationRequest mLocationRequest;
-    private GoogleApiClient mGoogleApiClient;
-    private GoogleMap mMap;
-    private Location mLocation;
-
-    private static final int LOCATION_REQUEST_CODE = 101;
-    private long UPDATE_INTERVAL = 1000;  /* 60 secs */
-
     // views
-    private FrameLayout progressView;
-    private LinearLayout emptyView;
-    private RecyclerView recyclerView;
+    @BindView(R.id.event_recycler) RecyclerView recyclerView;
+    @BindView(R.id.empty_view) LinearLayout emptyView;
+    @BindView(R.id.progress_view) FrameLayout progressView;
 
-    public MapFragment() {
-        // Required empty public constructor
-    }
-
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-//        if (mGoogleApiClient == null) {
-//            mGoogleApiClient = new GoogleApiClient.Builder(mContext)
-//                    .addConnectionCallbacks(this)
-//                    .addOnConnectionFailedListener(this)
-//                    .addApi(LocationServices.API)
-//                    .build();
-//        }
-    }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View root =  inflater.inflate(R.layout.fragment_map, container, false);
+        ButterKnife.bind(this, root);
         setHasOptionsMenu(true);
 
         // toolbar
@@ -131,7 +96,6 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         }
 
         // properties
-        todaysDate = new Date();
         currentEventsIds = new ArrayList<>();
         currentEvents = new ArrayList<>();
         userEvents = new ArrayList<>();
@@ -143,34 +107,9 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         databaseRef.child("userEvents").child(firebaseUser.getUid()).keepSynced(true);
 
-        // query all games that have not reached endTime
-        final double start = todaysDate.getTime() / 1000.0;
-        eventQuery = eventsRef.orderByChild("endTime").startAt(start);
-
-        // views
-        recyclerView = root.findViewById(R.id.event_recycler);
-        emptyView = root.findViewById(R.id.empty_view);
-        progressView = root.findViewById(R.id.progress_view);
         setupRecycler();
-
-        // map
-//        if (googleServicesAvailable()) {
-//            mMapView = root.findViewById(R.id.mapView);
-//            mMapView.onCreate(savedInstanceState);
-//            initMap();
-//        } else
-//            Toast.makeText(getActivity(), "Google Maps is unavailable", Toast.LENGTH_LONG).show();
-//
         fetchUserEvents();
-        fetchCurrentEvents();
-        checkEmptyState();
         return root;
-    }
-
-    public void onStart() {
-//        mGoogleApiClient.connect();
-        super.onStart();
-
     }
 
     @Override
@@ -178,11 +117,6 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         super.onResume();
         if (mAdapter != null)
             mAdapter.notifyDataSetChanged();
-    }
-
-    public void onStop() {
-//        mGoogleApiClient.disconnect();
-        super.onStop();
     }
 
     @Override
@@ -196,15 +130,21 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
-//        inflater.inflate(R.menu.menu_map, menu);
+        inflater.inflate(R.menu.menu_map, menu);
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
             case android.R.id.home:
-                if (getActivity() != null)
-                    launchAccount();
+                if (getActivity() != null){
+                    if (getActivity() instanceof MainActivity)
+                        ActivityLauncher.launchAccount((MainActivity) getActivity());
+                }
+                break;
+            case R.id.action_create:
+                if (getActivity() instanceof MainActivity)
+                    ActivityLauncher.createGame((MainActivity) getActivity());
                 break;
         }
         return super.onOptionsItemSelected(item);
@@ -307,6 +247,97 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
         };
 
         databaseRef.child("userEvents").child(firebaseUser.getUid()).addChildEventListener(childEventListener);
+        databaseRef.child("userEvents").child(firebaseUser.getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                // will fetch events after all user events have been fired
+                loadEvents();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
+        });
+    }
+
+
+    private void loadEvents(){
+        if (remoteConfig == null) remoteConfig = FirebaseRemoteConfig.getInstance();
+        if (!isValidContext()) return;
+
+        remoteConfig.fetch(Constants.REMOTE_CACHE_EXPIRATION).addOnCompleteListener(getActivity(), new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                if (task.isSuccessful())
+                    remoteConfig.activateFetched();
+
+                if (remoteConfig.getBoolean(Constants.CONFIG_AVAILABLE_EVENTS)){
+                    fetchAvailableEvents();
+                } else {
+                    checkEmptyState();
+
+                    // query all games that have not reached endTime
+                    final double start = new Date().getTime() / 1000.0;
+                    eventQuery = eventsRef.orderByChild("endTime").startAt(start);
+                    fetchCurrentEvents();
+                }
+            }
+        });
+    }
+
+    private void fetchAvailableEvents(){
+        currentEventsIds.clear();
+        currentEvents.clear();
+
+        Moshi moshi = new Moshi.Builder()
+                .add(new EventJsonAdapter())
+                .build();
+
+        final JsonAdapter<Event> jsonAdapter = moshi.adapter(Event.class);
+        new CloudService(response -> {
+            try {
+                JSONObject jsonObject = new JSONObject(response);
+                JSONObject resultsObj = jsonObject.getJSONObject("results");
+                Iterator<String> ids = resultsObj.keys();
+
+                // no available games
+                if (!ids.hasNext()){
+                    showEmptyView();
+                    return;
+                }
+
+                final Date date = new Date();
+                while (ids.hasNext()) {
+                    String eventId = ids.next();
+                    Event event;
+                    try {
+                        event = jsonAdapter.fromJson(resultsObj.getString(eventId));
+
+                        if (event == null) continue;
+                        if (!event.active) continue;
+                        if (userEvents.contains(eventId)) continue;
+
+                        if (CommonUtils.isGameOver(CommonUtils.secondsToMillis(event.endTime),
+                                date))
+                            continue;
+
+                        event.setEid(eventId);
+                        currentEventsIds.add(eventId);
+                        currentEvents.add(event);
+                        updateAdapter(currentEvents.size() - 1, true);
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                if (currentEvents.isEmpty()) showEmptyView();
+                else progressView.setVisibility(View.GONE);
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+                showEmptyView();
+            }
+        }).getAvailableEvents(firebaseUser.getUid());
     }
 
     private void checkEmptyState(){
@@ -346,7 +377,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
                     // check if event is today / upcoming
                     long endTime = event.getEndTime() * 1000;
                     Date endDate = new Date(endTime);
-                    if (todaysDate.before(endDate)) {
+                    if (new Date().before(endDate)) {
                         if (!userEvents.contains(dataSnapshot.getKey())) {
                             // game is upcoming, add listener to it
                             addEvent(dataSnapshot.getKey());
@@ -375,7 +406,7 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
 //                    Date eDate = new Date(dataSnapshot.child("startTime").getValue(Long.class) * 1000);
                     long endTime = event.getEndTime() * 1000;
                     Date endDate = new Date(endTime);
-                    if (todaysDate.before(endDate)) {
+                    if (new Date().before(endDate)) {
                         if (!userEvents.contains(dataSnapshot.getKey())) {
                             // game is upcoming, add listener to it
                             addEvent(dataSnapshot.getKey());
@@ -425,215 +456,25 @@ public class MapFragment extends Fragment implements GoogleApiClient.ConnectionC
 
     public void updateAdapter(final int index, final boolean isItemInserted){
         if (isAdded() && getActivity()!= null && !getActivity().isDestroyed() && !getActivity().isFinishing()){
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (isItemInserted)
-                        mAdapter.notifyItemInserted(index);
-                    else
-                        mAdapter.notifyItemChanged(index);
-                }
+            getActivity().runOnUiThread(() -> {
+                if (isItemInserted)
+                    mAdapter.notifyItemInserted(index);
+                else
+                    mAdapter.notifyItemChanged(index);
             });
         }
     }
 
     void showEmptyView(){
         if (isAdded() && getActivity() != null){
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    progressView.setVisibility(View.GONE);
-                    emptyView.setVisibility(View.VISIBLE);
-                }
+            getActivity().runOnUiThread(() -> {
+                progressView.setVisibility(View.GONE);
+                emptyView.setVisibility(View.VISIBLE);
             });
         }
     }
 
-    /******************************************************************************
-     * Initialize map
-     *****************************************************************************/
-
-    private void initMap() {
-        mMapView.onResume();// needed to get the map to display immediately
-        mMapView.getMapAsync(this);
-    }
-
-
-    // check for google services availability
-    public boolean googleServicesAvailable() {
-        if (!isValidContext()) return false;
-
-        GoogleApiAvailability api = GoogleApiAvailability.getInstance();
-        int isAvailable = api.isGooglePlayServicesAvailable(getActivity());
-        if (isAvailable == ConnectionResult.SUCCESS) {
-            return true;
-        } else if (api.isUserResolvableError(isAvailable)) {
-            Dialog dialog = api.getErrorDialog(getActivity(), isAvailable, 0);
-            dialog.show();
-        } else {
-            Toast.makeText(getActivity(), "Can't connect to play services", Toast.LENGTH_LONG).show();
-        }
-        return false;
-    }
-
-    @Override
-    public void onMapReady(GoogleMap googleMap) {
-        mMap = googleMap;
-
-        if (isValidContext())
-            if (getActivity() != null)
-                if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED)
-            return;
-
-        mMap.setMyLocationEnabled(true);
-        mMap.getUiSettings().setMyLocationButtonEnabled(true);
-        mMap.getUiSettings().setMapToolbarEnabled(true);
-    }
-
-    private void goToLocationZoom(double lat, double lng, float zoom) {
-        LatLng ll = new LatLng(lat, lng);
-        CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, zoom);
-        mMap.moveCamera(update);
-    }
-
-    /******************************************************************************
-     * Location handlers
-     *****************************************************************************/
-    protected void startLocationUpdates() {
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(UPDATE_INTERVAL);
-        //mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
-
-        if (isValidContext()) {
-            if (android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(),
-                    Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                    && android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                return;
-            }
-        }
-        LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
-                mLocationRequest, this);
-    }
-
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-        if (!isValidContext()) return;
-
-        // Display the connection status
-        if (ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_FINE_LOCATION)
-                != PackageManager.PERMISSION_GRANTED && android.support.v4.app.ActivityCompat.checkSelfPermission(getActivity(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(getActivity(), new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                    LOCATION_REQUEST_CODE);
-            return;
-        }
-
-        mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        if (mLocation != null) {
-            goToLocationZoom(mLocation.getLatitude(), mLocation.getLongitude(), 15);
-        } else {
-            Toast.makeText(getActivity(), "Unable to determine location, check your network connection",
-                    Toast.LENGTH_SHORT).show();
-        }
-        startLocationUpdates();
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-        // Report to the UI that the location was updated
-//        if (location == null) {
-//            Toast.makeText(getActivity(), "Can't get current location", Toast.LENGTH_LONG).show();
-//        } else {
-//            LatLng ll = new LatLng(location.getLatitude(), location.getLongitude());
-//            goToLocationZoom(ll.latitude, ll.longitude, 15); // no animation
-//        }
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {}
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {}
-
-    /******************************************************************************
-     * Permission handler
-     *****************************************************************************/
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == LOCATION_REQUEST_CODE) {
-            if (grantResults.length == 1 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (mGoogleApiClient.isConnected())
-                    startLocationUpdates();
-                return;
-            }
-
-            if (!isValidContext()) return;
-            if (!ActivityCompat.shouldShowRequestPermissionRationale(getActivity(),
-                    Manifest.permission.ACCESS_COARSE_LOCATION)) {
-                // user also CHECKED "never ask again"
-                Dialog dialog = showPermissionsMessage();
-                dialog.show();
-            } else {
-                showMessageOKCancel("You need to allow location access to create a game!",
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                ActivityCompat.requestPermissions(getActivity(),
-                                        new String[]{Manifest.permission.ACCESS_COARSE_LOCATION},
-                                        LOCATION_REQUEST_CODE);
-                            }
-                        });
-            }
-        }
-    }
-
-    private void showMessageOKCancel(String message, DialogInterface.OnClickListener okListener) {
-        new AlertDialog.Builder(getActivity())
-                .setMessage(message)
-                .setPositiveButton("OK", okListener)
-                .setNegativeButton("Cancel", null)
-                .create()
-                .show();
-    }
-
-    private Dialog showPermissionsMessage() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        builder.setMessage("You need to enable location on your device in order to use this " +
-                "feature to organize games.")
-                .setPositiveButton("Turn on", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        if (getActivity() == null) {
-                            return;
-                        }
-
-                        Intent intent = new Intent();
-                        intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                        Uri uri = Uri.fromParts("package", getActivity().getPackageName(), null);
-                        intent.setData(uri);
-                        MapFragment.this.startActivity(intent);
-
-                    }
-                })
-                .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        // User cancelled the dialog
-                        dialog.dismiss();
-                        if (isValidContext()) {
-                            getActivity().getFragmentManager().popBackStack();
-                        }
-                    }
-                });
-        // Create the AlertDialog object and return it
-        return builder.create();
-    }
-
-    void launchAccount(){
-        if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
-            getActivity().startActivity(new Intent(getActivity(), AccountActivity.class));
-        }
-    }
-
     private boolean isValidContext(){
-        return getActivity() != null && !(getActivity().isDestroyed() || getActivity().isFinishing());
+        return getActivity() instanceof MainActivity && CommonUtils.isValidContext((MainActivity)getActivity());
     }
 }

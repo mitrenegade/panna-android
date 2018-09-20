@@ -17,7 +17,7 @@
         android:layout_marginLeft="@dimen/ma_list_item_edges_padding"
         android:layout_marginStart="@dimen/ma_list_item_edges_padding"
         android:layout_marginTop="@dimen/ma_list_multi_line_item_avatar_icon_padding_top"
-        app:srcCompat="@drawable/ic_soccer"/>
+        app:srcCompat="@drawable/ic_loading_image"/>
 
     <LinearLayout
         android:id="@+id/event_details"

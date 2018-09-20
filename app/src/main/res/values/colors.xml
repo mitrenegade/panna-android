@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#577965</color>
-    <color name="colorPrimaryDark">#333335</color>
+    <color name="colorPrimaryDark">#4f6959</color>
     <color name="colorAccent">#212121</color>
+    <!--<color name="colorAccent">#79576b</color>-->
+    <color name="colorAccentDark">#333335</color>
     <color name="dividerColor">#BDBDBD</color>
     <color name="splashColor">#3a3a3c</color>
 

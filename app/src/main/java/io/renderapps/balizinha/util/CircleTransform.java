@@ -30,8 +30,7 @@ import com.bumptech.glide.load.Transformation;
 import com.bumptech.glide.load.engine.Resource;
 import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool;
 import com.bumptech.glide.load.resource.bitmap.BitmapResource;
-
-        import java.security.MessageDigest;
+import java.security.MessageDigest;
 
 public class CircleTransform implements Transformation<Bitmap> {
 

@@ -45,7 +45,6 @@ public class League implements Parcelable {
         public League createFromParcel(Parcel in) {
             return new League(in);
         }
-
         public League[] newArray(int size) {
             return new League[size];
         }
@@ -65,7 +64,6 @@ public class League implements Parcelable {
         this.tags = new ArrayList<>();
         in.readStringList(this.tags);
 
-
         this.createdAt = in.readLong();
 
         // boolean read as int, 1 == true, 0 == false
@@ -83,7 +81,6 @@ public class League implements Parcelable {
 
         dest.writeInt(this.playerCount);
         dest.writeInt(this.eventCount);
-
 
         dest.writeStringList(this.tags);
 
@@ -114,7 +111,7 @@ public class League implements Parcelable {
         this.info = info;
     }
 
-    public void setName(String name) {
+    public void setName(@NonNull String name) {
         this.name = name;
     }
 
@@ -126,13 +123,6 @@ public class League implements Parcelable {
         this.photoUrl = photoUrl;
     }
 
-    public void setPrivate(boolean aPrivate) {
-        isPrivate = aPrivate;
-    }
-
-    public boolean isPrivate() {
-        return isPrivate;
-    }
 
     public void setTags(ArrayList<String> tags) {
         this.tags = tags;
@@ -190,6 +180,11 @@ public class League implements Parcelable {
         this.playerCount = playerCount;
     }
 
+    public void setIsPrivate(boolean aPrivate) {
+        isPrivate = aPrivate;
+    }
 
-
+    public boolean isIsPrivate() {
+        return isPrivate;
+    }
 }

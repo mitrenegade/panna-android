@@ -1,11 +1,7 @@
 package io.renderapps.balizinha.ui.main;
 
-import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
@@ -13,15 +9,9 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
-import android.view.LayoutInflater;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.CheckBox;
-import android.widget.TextView;
 
 import com.facebook.login.LoginManager;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserInfo;
@@ -30,16 +20,15 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 import com.stripe.android.PaymentConfiguration;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Date;
-import java.util.concurrent.TimeUnit;
-
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.Disposable;
 import io.renderapps.balizinha.R;
+import io.renderapps.balizinha.service.FirebaseService;
 import io.renderapps.balizinha.service.notification.NotificationService;
 import io.renderapps.balizinha.ui.calendar.CalendarFragment;
 import io.renderapps.balizinha.ui.league.LeagueFragment;
@@ -49,6 +38,7 @@ import io.renderapps.balizinha.service.CloudService;
 import io.renderapps.balizinha.ui.login.LoginActivity;
 import io.renderapps.balizinha.util.CommonUtils;
 import io.renderapps.balizinha.util.Constants;
+import io.renderapps.balizinha.util.DialogHelper;
 
 public class MainActivity extends AppCompatActivity {
     protected final String STRIPE_KEY_PROD =
@@ -59,10 +49,8 @@ public class MainActivity extends AppCompatActivity {
     // Remote Config keys
     private static final String UPDATE_KEY = "newestVersionAndroid";
 
-    private AlertDialog mAlertDialog;
     private FragmentManager fragmentManager;
     private BottomNavigationView navigation;
-    private Player player;
 
     // firebase
     private FirebaseAuth mAuth;
@@ -70,66 +58,58 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseUser firebaseUser;
     private ValueEventListener valueEventListener;
     private DatabaseReference databaseRef;
-    private FirebaseRemoteConfig mFirebaseRemoteConfig;
+    private Disposable remoteDisposable;
 
     private BottomNavigationView.OnNavigationItemSelectedListener mOnNavigationItemSelectedListener
-            = new BottomNavigationView.OnNavigationItemSelectedListener() {
+            = item -> {
+                Fragment fragment;
+                Class fragmentClass;
 
-        @Override
-        public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-            Fragment fragment;
-            Class fragmentClass;
-
-            switch (item.getItemId()) {
-                case R.id.navigation_league:
-                    fragmentClass = LeagueFragment.class;
-                    break;
-                case R.id.navigation_map:
-                    fragmentClass = MapFragment.class;
-                    break;
-                case R.id.navigation_calendar:
-                    fragmentClass = CalendarFragment.class;
-                    break;
-                default:
-                    fragmentClass = MapFragment.class;
-            }
-            try {
-                fragment = (Fragment) fragmentClass.newInstance();
-                replaceFragment(fragment);
-                item.setChecked(true);
-                setTitle(item.getTitle());
-                return true;
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            return false;
-        }
-    };
+                switch (item.getItemId()) {
+                    case R.id.navigation_league:
+                        fragmentClass = LeagueFragment.class;
+                        break;
+                    case R.id.navigation_map:
+                        fragmentClass = MapFragment.class;
+                        break;
+                    case R.id.navigation_calendar:
+                        fragmentClass = CalendarFragment.class;
+                        break;
+                    default:
+                        fragmentClass = MapFragment.class;
+                }
+                try {
+                    fragment = (Fragment) fragmentClass.newInstance();
+                    replaceFragment(fragment);
+                    item.setChecked(true);
+                    setTitle(item.getTitle());
+                    return true;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return false;
+            };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        PaymentConfiguration.init(STRIPE_KEY_PROD);
+        PaymentConfiguration.init(STRIPE_KEY_DEV);
 
         // auth listener
-        mFirebaseRemoteConfig = FirebaseRemoteConfig.getInstance();
         mAuth = FirebaseAuth.getInstance();
         databaseRef = FirebaseDatabase.getInstance().getReference();
         firebaseUser = mAuth.getCurrentUser();
-        authListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                firebaseUser = firebaseAuth.getCurrentUser();
-                if (firebaseUser == null) {
-                    // user authentication no longer valid
-                    startActivity(new Intent(MainActivity.this, LoginActivity.class));
-                    finish();
-                    overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
-                } else {
-                    CommonUtils.syncEndpoints(databaseRef, firebaseUser.getUid());
-                    validateCustomerId();
-                }
+        authListener = firebaseAuth -> {
+            firebaseUser = firebaseAuth.getCurrentUser();
+            if (firebaseUser == null) {
+                // user authentication no longer valid
+                startActivity(new Intent(MainActivity.this, LoginActivity.class));
+                finish();
+                overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
+            } else {
+                CommonUtils.syncEndpoints(databaseRef, firebaseUser.getUid());
+                validateCustomerId();
             }
         };
 
@@ -168,6 +148,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         super.onStop();
+        if (remoteDisposable != null)
+            remoteDisposable.dispose();
         if (authListener != null) {
             mAuth.removeAuthStateListener(authListener);
         }
@@ -273,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.getValue() != null) {
-                    player = dataSnapshot.getValue(Player.class);
+                    Player player = dataSnapshot.getValue(Player.class);
 
                     // set device os
                     if (player.getOs() == null || player.getOs().isEmpty()
@@ -324,15 +306,12 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         if (!dataSnapshot.exists() || dataSnapshot.getValue() == null){
-                            new CloudService(new CloudService.ProgressListener() {
-                                @Override
-                                public void onStringResponse(String string) {
-                                    try {
-                                        JSONObject jsonObject = new JSONObject(string);
-                                        final String id = jsonObject.getString("customer_id");
-                                    } catch (JSONException e) {
-                                        e.printStackTrace();
-                                    }
+                            new CloudService(string -> {
+                                try {
+                                    JSONObject jsonObject = new JSONObject(string);
+                                    final String id = jsonObject.getString("customer_id");
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
                                 }
                             }).validateStripeCustomer(firebaseUser.getUid(), firebaseUser.getEmail());
                         }
@@ -343,135 +322,16 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
-    public Player getCurrentUser(){
-        return player;
-    }
 
     private void initRemoteConfig(){
-        int cacheExpiration = Constants.CACHE_EXPIRATION; // 2 hrs
-        if (mFirebaseRemoteConfig.getInfo().getConfigSettings().isDeveloperModeEnabled()) {
-            cacheExpiration = 0;
-        }
-
-        mFirebaseRemoteConfig.fetch(cacheExpiration)
-                .addOnCompleteListener(this, new OnCompleteListener<Void>() {
-            @Override
-            public void onComplete(@NonNull Task<Void> task) {
-                if (task.isSuccessful()) {
-                    mFirebaseRemoteConfig.activateFetched();
-                }
-                showUpdateAvailable();
-            }
-        });
-    }
-
-    private void showUpdateAvailable(){
-        final SharedPreferences sharedPref =
-                getPreferences(Context.MODE_PRIVATE);
-        final SharedPreferences.Editor editor = sharedPref.edit();
-        boolean showUpdate = sharedPref.getBoolean(Constants.PREF_SHOW_UPDATES_KEY, true);
-        long elapsedTime = sharedPref.getLong(Constants.PREF_ELAPSED_TIME, 0);
-
-        // user has checked to never see updates again
-        if (!showUpdate)
-            return;
-
-        // show updates in only 12hr intervals
-        long differenceInMillis = System.currentTimeMillis() - elapsedTime;
-        long differenceInHours = TimeUnit.MILLISECONDS.toHours(differenceInMillis);
-        if (differenceInHours < 12)
-            return;
-
-        // get update version if available
-        final String updateVersion = mFirebaseRemoteConfig.getString(UPDATE_KEY);
-        if (updateVersion == null || updateVersion.isEmpty())
-            return;
-
-        // no need to show update if user has latest version
-        if (updateVersion.equals(Constants.APP_VERSION))
-            return;
-
-        final String updateMsg = "There is a newer version " + updateVersion
-                + " of Balizinha available in the Play Store.";
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Update Available");
-        builder.setCancelable(false);
-
-        // set view
-        View v = getLayoutInflater().inflate(R.layout.dialog_app_update, null);
-        builder.setView(v);
-        final CheckBox hideUpdates = v.findViewById(R.id.update_checkbox);
-        ((TextView)v.findViewById(R.id.update_message)).setText(updateMsg);
-        // response
-        builder.setPositiveButton(
-                "Open in Play Store",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        openPlayStore();
-                        editor.putLong(Constants.PREF_ELAPSED_TIME, new Date().getTime());
-                        editor.commit();
-                        dialog.dismiss();
-                    }
-                });
-
-        builder.setNegativeButton(
-                "Later",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                        if (hideUpdates.isChecked()){
-                            // write to user preferences
-                            editor.putBoolean(Constants.PREF_SHOW_UPDATES_KEY, false);
-                            editor.commit();
-                            dialog.dismiss();
-                        } else {
-                            editor.putLong(Constants.PREF_ELAPSED_TIME, new Date().getTime());
-                            editor.commit();
-                            dialog.dismiss();
-                        }
-                    }
-                });
-
-        if (isDestroyed() || isFinishing())
-            return;
-        builder.create().show();
-    }
-
-    void openPlayStore(){
-        final String appPackageName = getPackageName();
-        try {
-            startActivity(new Intent(Intent.ACTION_VIEW,
-                    Uri.parse("market://details?id=" + appPackageName)));
-        } catch (android.content.ActivityNotFoundException e) {
-            // open in default browser if play store app not installed
-            startActivity(new Intent(Intent.ACTION_VIEW,
-                    Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
-        }
-    }
-
-    public void showProcessingPayment(){
-        if (isDestroyed() || isFinishing()) return;
-
-        final Context mContext = this;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-                builder.setCancelable(false);
-
-                LayoutInflater inflater = getLayoutInflater();
-                builder.setView(inflater.inflate(R.layout.dialog_processing_payment, null));
-                mAlertDialog = builder.create();
-                mAlertDialog.show();
-            }
-        });
-    }
-
-    public void hideProcessingPayment(){
-        if (mAlertDialog != null){
-            mAlertDialog.cancel();
-            mAlertDialog = null;
-        }
+        remoteDisposable = FirebaseService.Companion.getRemoteConfig()
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .subscribe(remoteConfig -> {
+                    // get update version if available
+                    final String updateVersion = remoteConfig.getString(UPDATE_KEY);
+                    if (updateVersion == null || updateVersion.isEmpty())
+                        return;
+                    DialogHelper.showUpdateAvailable(MainActivity.this, updateVersion);
+                }, error -> {});
     }
 }

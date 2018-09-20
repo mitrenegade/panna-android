@@ -1,7 +1,5 @@
 package io.renderapps.balizinha.model;
 
-import android.widget.TextView;
-
 /**
  * Created by joel on 12/21/17.
  */

@@ -34,9 +34,12 @@ buildscript {
 
         retroVersion = '2.4.0'
         retroRx2Adapter = '2.2.0'
-        retroMoshiConverter = '2.3.0'
+        retroMoshiConverter = '2.4.0'
+        retroScalars = '2.4.0'
+        volleyVersion = '1.1.1'
         moshiVersion = '1.6.0'
         rxjavaVersion = '2.1.9'
+        rxKotlin = '2.3.0'
         rxandroidVersion = '2.0.2'
         okhttp3Interceptor = '3.9.0'
 
@@ -62,6 +65,7 @@ allprojects {
         google()
     }
 }
+
 
 task clean(type: Delete) {
     delete rootProject.buildDir

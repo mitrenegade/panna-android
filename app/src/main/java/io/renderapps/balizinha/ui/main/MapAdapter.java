@@ -23,7 +23,7 @@ public class MapAdapter extends RecyclerView.Adapter<MapViewHolder> {
     private Context mContext;
     private List<Event> events;
 
-    MapAdapter(Context context, List<Event> events){
+    public MapAdapter(Context context, List<Event> events){
         this.mContext = context;
         this.events = events;
     }
@@ -46,4 +46,5 @@ public class MapAdapter extends RecyclerView.Adapter<MapViewHolder> {
     public int getItemCount() {
         return events.size();
     }
+
 }

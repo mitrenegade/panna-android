@@ -6,7 +6,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.drawable.Drawable;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -16,14 +15,16 @@ import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.ui.event.attendees.AttendeesActivity;
 import io.renderapps.balizinha.ui.event.EventDetailsActivity;
+import io.renderapps.balizinha.ui.event.organize.CreateEventActivity;
+import io.renderapps.balizinha.ui.event.organize.LeagueSelectorActivity;
 import io.renderapps.balizinha.ui.league.LeagueActivity;
 import io.renderapps.balizinha.ui.main.MainActivity;
 import io.renderapps.balizinha.ui.profile.SetupProfileActivity;
@@ -124,8 +125,7 @@ public class PhotoHelper {
             if (thumbnail != null) {
                 thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
                 byte[] byteFormat = bytes.toByteArray();
-                if (activity instanceof SetupProfileActivity)
-                    ((SetupProfileActivity) activity).onAddPhoto(byteFormat);
+                uploadPhoto(byteFormat);
             }
         }
     }
@@ -139,14 +139,21 @@ public class PhotoHelper {
                     data.getData());
             ByteArrayOutputStream bytes = new ByteArrayOutputStream();
             bm.compress(Bitmap.CompressFormat.JPEG, 100, bytes);
-            byte[] byteFormat = bytes.toByteArray();
 
-            if (activity instanceof SetupProfileActivity)
-                ((SetupProfileActivity)activity).onAddPhoto(byteFormat);
+            byte[] byteFormat = bytes.toByteArray();
+            uploadPhoto(byteFormat);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void uploadPhoto(byte[] bytes){
+        if (activity instanceof SetupProfileActivity)
+            ((SetupProfileActivity)activity).onAddPhoto(bytes);
+
+        if (activity instanceof CreateEventActivity)
+            ((CreateEventActivity)activity).onAddPhoto(bytes);
     }
 
     /*******************************************************
@@ -197,6 +204,17 @@ public class PhotoHelper {
             final MainActivity activity = (MainActivity) context;
             return !activity.isDestroyed() && !activity.isFinishing();
         }
+
+        if (context instanceof LeagueSelectorActivity) {
+            final LeagueSelectorActivity activity = (LeagueSelectorActivity) context;
+            return !activity.isDestroyed() && !activity.isFinishing();
+        }
+
+        if (context instanceof CreateEventActivity) {
+            final CreateEventActivity activity = (CreateEventActivity) context;
+            return !activity.isDestroyed() && !activity.isFinishing();
+        }
+
         return true;
     }
 
@@ -235,6 +253,26 @@ public class PhotoHelper {
         }
     }
 
+
+
+    public static void glideLeagueLogo(Context context, ImageView imageView, String url, int placeHolder){
+        RequestOptions myOptions = new RequestOptions()
+                .fitCenter()
+                .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                .transform(new RoundedCorners(12))
+                .placeholder(placeHolder);
+
+        // load photo
+        if (isValidContextForGlide(context)) {
+            Glide.with(context)
+                    .asBitmap()
+                    .apply(myOptions)
+                    .load(url)
+                    .into(imageView);
+        }
+    }
+
+
     public static void glideHeader(Context context, ImageView imageView, String url, int placeHolder){
         RequestOptions myOptions = new RequestOptions()
                 .fitCenter()
@@ -251,11 +289,11 @@ public class PhotoHelper {
         }
     }
 
-    public static void glideDrawable(Context context, ImageView imageView, Drawable drawable){
+    public static void glideImageResource(Context context, ImageView imageView, int drawable){
         RequestOptions myOptions = new RequestOptions()
                 .fitCenter()
-                .diskCacheStrategy(DiskCacheStrategy.NONE)
-                .transform(new CircleTransform(context));
+                .transform(new RoundedCorners(12))
+                .diskCacheStrategy(DiskCacheStrategy.NONE);
 
         // load photo
         if (isValidContextForGlide(context)) {
@@ -267,10 +305,26 @@ public class PhotoHelper {
         }
     }
 
+
+
+    public static void clearImage(Context context, ImageView imageView, int defaultImg){
+        if (isValidContextForGlide(context)){
+            Glide.with(context).clear(imageView);
+            imageView.setImageResource(defaultImg);
+        }
+    }
+
+
     public static void clearImage(Context context, ImageView imageView){
         if (isValidContextForGlide(context)){
             Glide.with(context).clear(imageView);
-            imageView.setImageResource(R.drawable.ic_default_photo);
         }
     }
+
+    public static byte[] getImageAsBytes(Bitmap bmp){
+        ByteArrayOutputStream bao = new ByteArrayOutputStream();
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, bao);
+        return bao.toByteArray();
+    }
+
 }

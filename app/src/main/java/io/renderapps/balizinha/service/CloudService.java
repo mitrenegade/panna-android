@@ -5,12 +5,14 @@ import android.support.annotation.NonNull;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import io.reactivex.Observable;
 
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.observers.DisposableObserver;
 import io.reactivex.schedulers.Schedulers;
 import io.renderapps.balizinha.module.RetrofitFactory;
+import io.renderapps.balizinha.service.stripe.StripeService;
 import okhttp3.ResponseBody;
 import retrofit2.Retrofit;
 
@@ -135,64 +137,6 @@ public class CloudService {
                 }));
     }
 
-    public void getLeaguePlayers(String leagueId){
-        final LeagueService leagueService = retrofit.create(LeagueService.class);
-        new CompositeDisposable().add(leagueService.getPlayersForLeague(leagueId)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableObserver<ResponseBody>(){
-
-                    @Override
-                    public void onNext(ResponseBody response) {
-                        try {
-                            String rawKey = response.string();
-                            mProgressListener.onStringResponse(rawKey);
-                        } catch (IOException iox) {
-                            mProgressListener.onStringResponse("");
-                        }
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        mProgressListener.onStringResponse(e.getMessage());
-                    }
-
-                    @Override
-                    public void onComplete() {
-
-                    }
-                }));
-    }
-
-    public void getLeagueEvents(String leagueId){
-        final LeagueService leagueService = retrofit.create(LeagueService.class);
-        new CompositeDisposable().add(leagueService.getEventsForLeague(leagueId)
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribeWith(new DisposableObserver<ResponseBody>(){
-
-                    @Override
-                    public void onNext(ResponseBody response) {
-                        try {
-                            String rawKey = response.string();
-                            mProgressListener.onStringResponse(rawKey);
-                        } catch (IOException iox) {
-                            mProgressListener.onStringResponse("");
-                        }
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        mProgressListener.onStringResponse(e.getMessage());
-                    }
-
-                    @Override
-                    public void onComplete() {
-
-                    }
-                }));
-    }
-
     public void changeLeaguePlayerStatus(String userId, String leagueId, String status){
         final LeagueService leagueService = retrofit.create(LeagueService.class);
 
@@ -217,9 +161,67 @@ public class CloudService {
                     }
 
                     @Override
-                    public void onComplete() {
+                    public void onComplete() {}
+                }));
+    }
 
+    public void createEvent(HashMap<String, Object> params){
+        final EventApiService eventService = retrofit.create(EventApiService.class);
+
+        new CompositeDisposable().add(eventService.createEvent(params)
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<ResponseBody>(){
+
+                    @Override
+                    public void onNext(ResponseBody response) {
+                        try {
+                            String rawKey = response.string();
+                            mProgressListener.onStringResponse(rawKey);
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
                     }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        mProgressListener.onStringResponse(e.getMessage());
+                    }
+
+                    @Override
+                    public void onComplete() {}
+                }));
+    }
+
+    public void getAvailableEvents(String userId){
+        final EventApiService eventService = retrofit.create(EventApiService.class);
+        call(eventService.getEventsAvailableToUser(userId));
+    }
+
+
+    private void call(Observable<ResponseBody> observable){
+        new CompositeDisposable().add(observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<ResponseBody>(){
+
+                    @Override
+                    public void onNext(ResponseBody response) {
+                        try {
+                            String rawKey = response.string();
+                            mProgressListener.onStringResponse(rawKey);
+                        } catch (IOException iox) {
+                            mProgressListener.onStringResponse("");
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        mProgressListener.onStringResponse(e.getMessage());
+                    }
+
+                    @Override
+                    public void onComplete() {}
                 }));
     }
 }

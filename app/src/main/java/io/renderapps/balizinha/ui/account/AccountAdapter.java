@@ -1,6 +1,7 @@
 package io.renderapps.balizinha.ui.account;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -13,7 +14,6 @@ import android.widget.TextView;
 import com.facebook.login.LoginManager;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserInfo;
-import com.stripe.android.CustomerSession;
 import com.stripe.android.view.PaymentMethodsActivity;
 
 import io.renderapps.balizinha.R;
@@ -47,8 +47,8 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
     private boolean paymentRequired;
 
     AccountAdapter(AccountActivity accountActivity, String[] options, boolean paymentRequired){
-        this.accountActivity = accountActivity;
         this.options = options;
+        this.accountActivity = accountActivity;
         this.paymentRequired = paymentRequired;
     }
 
@@ -68,6 +68,7 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
         if (option.startsWith("Version")) {
             holder.rightArrow.setVisibility(View.GONE);
             holder.option.setText(Constants.APP_VERSION);
+
             if (Constants.IN_DEV_MODE)
                 holder.option.setText(holder.option.getText().toString().concat("t"));
         }
@@ -91,6 +92,10 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                         case 2:
                             break;
                         case 3:
+                            Intent websiteIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pannaleagues.com/"));
+                            accountActivity.startActivity(websiteIntent);
+                            break;
+                        case 4:
                             // logout
                             FirebaseAuth auth = FirebaseAuth.getInstance();
                             if (auth.getCurrentUser() != null) {
@@ -99,7 +104,7 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                                         LoginManager.getInstance().logOut();
                             }
 
-                            CustomerSession.endCustomerSession();
+//                            CustomerSession.endCustomerSession();
                             auth.signOut();
                             accountActivity.finish();
                             break;
@@ -120,6 +125,10 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                         case 1:
                             break;
                         case 2:
+                            Intent websiteIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pannaleagues.com/"));
+                            accountActivity.startActivity(websiteIntent);
+                            break;
+                        case 3:
                             // logout
                             FirebaseAuth auth = FirebaseAuth.getInstance();
                             if (auth.getCurrentUser() != null) {
@@ -128,7 +137,7 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                                         LoginManager.getInstance().logOut();
                             }
 
-                            CustomerSession.endCustomerSession();
+//                            CustomerSession.endCustomerSession();
                             auth.signOut();
                             accountActivity.finish();
                             break;

@@ -54,7 +54,7 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.service.FirebaseService;
+import io.renderapps.balizinha.service.DatabaseService;
 import io.renderapps.balizinha.ui.main.MainActivity;
 import io.renderapps.balizinha.util.CircleTransform;
 import io.renderapps.balizinha.util.PhotoHelper;
@@ -291,7 +291,7 @@ public class SetupProfileActivity extends AppCompatActivity implements View.OnCl
             public void onComplete(@NonNull Task<Void> task) {
                 if (task.isSuccessful()) {
                     if (mBytes != null && mBytes.length > 0)
-                        FirebaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
+                        DatabaseService.startActionUploadPhoto(mContext, firebaseUser.getUid(),
                                 mBytes);
 
                     if (!isDestroyed() && !isFinishing()){

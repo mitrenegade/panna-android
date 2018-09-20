@@ -3,11 +3,56 @@ package io.renderapps.balizinha.model;
 import android.os.Parcel;
 import android.os.Parcelable;
 
+import com.google.android.gms.maps.model.LatLng;
+import com.google.maps.android.clustering.ClusterItem;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.stream.Stream;
+
 /**
  * Created by joel on 12/13/17.
  */
 
-public class Event implements Parcelable {
+public class Event implements Parcelable, ClusterItem {
+
+    public enum Type {
+        event3v3 ("3 vs 3"),
+        event5v5 ("5 vs 5"),
+        event7v7 ("7 vs 7"),
+        event11v11 ("11 vs 11"),
+        group ("Group class"),
+        social ("Social event");
+
+        private final String type;
+
+        Type(String s) {
+            type = s;
+        }
+
+        public boolean equalsName(String otherName) {
+            return type.equals(otherName);
+        }
+
+        public String toString() {
+            return this.type;
+        }
+
+        public static String[] names() {
+            return Arrays.toString(Type.values()).replaceAll("^.|.$", "").split(", ");
+        }
+
+        public static Type findTypeByName(String name){
+            for(Type v : values()){
+                if( v.name().equals(name)){
+                    return v;
+                }
+            }
+            return null;
+        }
+    }
+
 
     public String eid;
     public String photoUrl;
@@ -15,9 +60,12 @@ public class Event implements Parcelable {
     public String info;
     public String name;
     public String owner;
+    public String organizer;
     public String type;
     public String place;
     public String state;
+    public String league;
+
     public double lat;
     public double lon;
     public long startTime;
@@ -25,8 +73,10 @@ public class Event implements Parcelable {
     public long createdAt;
     public int maxPlayers;
     public double amount;
+
     public boolean paymentRequired;
     public boolean active;
+    public boolean leagueIsPrivate;
 
     public Event() { }
 
@@ -53,9 +103,11 @@ public class Event implements Parcelable {
         this.info = in.readString();
         this.name = in.readString();
         this.owner = in.readString();
+        this.organizer = in.readString();
         this.type = in.readString();
         this.state = in.readString();
         this.place = in.readString();
+        this.league = in.readString();
 
 
         this.lat = in.readDouble();
@@ -71,6 +123,7 @@ public class Event implements Parcelable {
         // boolean read as int, 1 == true, 0 == false
         this.paymentRequired = in.readInt() != 0;
         this.active = in.readInt() != 0;
+        this.leagueIsPrivate = in.readInt() != 0;
     }
 
     @Override
@@ -81,9 +134,11 @@ public class Event implements Parcelable {
         dest.writeString(this.info);
         dest.writeString(this.name);
         dest.writeString(this.owner);
+        dest.writeString(this.organizer);
         dest.writeString(this.type);
         dest.writeString(this.state);
         dest.writeString(this.place);
+        dest.writeString(this.league);
 
         dest.writeDouble(this.lat);
         dest.writeDouble(this.lon);
@@ -98,11 +153,42 @@ public class Event implements Parcelable {
         // boolean written as int, 1 == true, 0 == false
         dest.writeInt(paymentRequired ? 1 : 0);
         dest.writeInt(active ? 1 : 0);
+        dest.writeInt(leagueIsPrivate ? 1 : 0);
     }
 
     @Override
     public int describeContents() {
         return 0;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Event){
+            if (eid != null && ((Event) obj).eid != null){
+                if (eid.equals(((Event) obj).eid))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /**************************************************************************************************
+     * Clustering
+     *************************************************************************************************/
+
+    @Override
+    public LatLng getPosition() {
+        return new LatLng(lat, lon);
+    }
+
+    @Override
+    public String getTitle() {
+        return (name != null) ? name : "";
+    }
+
+    @Override
+    public String getSnippet() {
+        return null;
     }
 
     /**************************************************************************************************
@@ -177,6 +263,18 @@ public class Event implements Parcelable {
         return active;
     }
 
+    public String getOrganizer() {
+        return organizer;
+    }
+
+    public String getLeague() {
+        return league;
+    }
+
+    public boolean isLeagueIsPrivate() {
+        return leagueIsPrivate;
+    }
+
     // setters
 
     public void setPhotoUrl(String photoUrl) {
@@ -249,5 +347,13 @@ public class Event implements Parcelable {
 
     public void setAmount(double amount) {
         this.amount = amount;
+    }
+
+    public void setOrganizer(String organizer) {
+        this.organizer = organizer;
+    }
+
+    public void setLeague(String league) {
+        this.league = league;
     }
 }

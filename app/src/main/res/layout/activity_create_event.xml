@@ -1,15 +1,495 @@
-<?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/scrollView"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ui.event.CreateEventActivity">
+    android:animateLayoutChanges="true"
+    android:overScrollMode="never"
+    android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"/>
+        android:background="#F5F5F5"
+        android:orientation="vertical">
+
+        <ImageView
+            android:id="@+id/event_header"
+            android:layout_width="match_parent"
+            android:layout_height="175dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/background_league_header" />
+
+        <LinearLayout
+            android:id="@+id/ll_add_photo"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:baselineAligned="false"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="@android:color/white"
+            android:foreground="?android:attr/selectableItemBackground">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:text="Add photo"
+                android:fontFamily="sans-serif"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp"
+                android:layout_weight="0.75"/>
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_gravity="end|center_vertical"
+                android:tint="@color/colorAccent"
+                app:srcCompat="@drawable/ic_add" />
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:paddingStart="16dp"
+            android:text="Details"
+            android:textAllCaps="true"
+            android:textColor="#9E9E9E" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="8dp"
+            android:background="@android:color/white">
+
+            <TextView
+                android:id="@+id/name_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Name"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
 
 
+            <EditText
+                android:id="@+id/name"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/name_tv"
+                android:background="@android:color/transparent"
+
+                android:hint="Balizinha"
+                android:inputType="text"
+                android:imeOptions="actionDone"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp"
+                android:maxLines="1"
+                android:maxLength="100"/>
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/ll_event_type"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@android:color/white"
+            android:foreground="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/type_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Event Type"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+
+            <TextView
+                android:id="@+id/type"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@android:color/transparent"
+                android:textSize="16sp"
+                android:textColor="@color/textPrimary"
+                android:maxLength="20"
+                android:maxLines="1"/>
+
+            <ImageView
+                android:id="@+id/type_arrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:srcCompat="@drawable/ic_arrow"/>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/ll_max_players"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@android:color/white"
+            android:foreground="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/max_players_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Max Players"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+            <ImageView
+                android:id="@+id/max_players_arrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:srcCompat="@drawable/ic_arrow"/>
+
+            <TextView
+                android:id="@+id/max_players"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:background="@android:color/transparent"
+                android:textSize="16sp"
+                android:textColor="@color/textPrimary"
+                android:maxLength="20"
+                android:maxLines="1"/>
+
+        </RelativeLayout>
+
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:paddingStart="16dp"
+            android:text="Where and when"
+            android:textAllCaps="true"
+            android:textColor="#9E9E9E" />
+
+        <RelativeLayout
+            android:id="@+id/rl_venue_layout"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="8dp"
+            android:background="@android:color/white"
+            android:foreground="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/venue_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Venue"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/event_venue"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/venue_tv"
+                android:background="@android:color/transparent"
+                android:focusable="false"
+                android:clickable="false"
+                android:focusableInTouchMode="false"
+
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp"
+                android:maxLines="1"
+                android:maxLength="100"/>
+
+
+            <TextView
+                android:id="@+id/venue_hint"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/venue_tv"
+                android:background="@android:color/transparent"
+                android:focusable="false"
+                android:clickable="false"
+                android:focusableInTouchMode="false"
+
+                android:textSize="16sp"
+                android:textColor="#808080"
+                android:text="Fenway Park" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/rl_day_layout"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@android:color/white"
+            android:foreground="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/day_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Day"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/event_day"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/day_tv"
+                android:background="@android:color/transparent"
+                android:textSize="16sp"
+                android:textColor="@color/textPrimary"
+                android:maxLength="200"
+                android:maxLines="1" />
+
+            <ImageView
+                android:id="@+id/day_arrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:srcCompat="@drawable/ic_arrow"/>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/rl_start_time"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@android:color/white"
+            android:foreground="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/start_time_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Start Time"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/start_time"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/start_time_tv"
+                android:background="@android:color/transparent"
+                android:textSize="16sp"
+                android:textColor="@color/textPrimary"
+                android:maxLength="200"
+                android:maxLines="1"/>
+
+
+            <ImageView
+                android:id="@+id/start_time_arrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:srcCompat="@drawable/ic_arrow"/>
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/rl_end_time"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@android:color/white"
+            android:foreground="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <TextView
+                android:id="@+id/end_time_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="End Time"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/end_time"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/end_time_tv"
+                android:background="@android:color/transparent"
+                android:textSize="16sp"
+                android:textColor="@color/textPrimary"
+                android:maxLength="200"
+                android:maxLines="1"/>
+
+            <ImageView
+                android:id="@+id/end_time_arrow"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                app:srcCompat="@drawable/ic_arrow"/>
+
+
+        </RelativeLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:paddingStart="16dp"
+            android:text="Payment"
+            android:textAllCaps="true"
+            android:textColor="#9E9E9E" />
+
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_marginTop="8dp"
+            android:background="@android:color/white">
+
+            <TextView
+                android:id="@+id/payment_required_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Payment Required"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+            <Switch
+                android:id="@+id/payment_required_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_alignParentEnd="true"
+                android:layout_marginEnd="16dp"
+                android:checked="true"/>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/ll_payment_amount"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@android:color/white">
+
+            <TextView
+                android:id="@+id/payment_amount_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="16dp"
+                android:fontFamily="sans-serif"
+                android:gravity="center_vertical"
+                android:text="Amount"
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp" />
+
+
+            <EditText
+                android:id="@+id/payment_amount"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical|end"
+                android:layout_marginEnd="16dp"
+                android:layout_marginStart="16dp"
+                android:layout_toEndOf="@id/payment_amount_tv"
+                android:background="@android:color/transparent"
+                android:hint="$5.00"
+                android:text="5.00"
+
+                android:textColor="@color/textPrimary"
+                android:textSize="16sp"
+                android:inputType="numberDecimal"
+                android:maxLines="1"
+                android:maxLength="6"/>
+
+        </RelativeLayout>
+
+        <TextView
+            android:id="@+id/description_tv"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:paddingStart="16dp"
+            android:text="Description"
+            android:textAllCaps="true"
+            android:textColor="#9E9E9E" />
+
+        <EditText
+            android:id="@+id/event_description"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:background="@android:color/white"
+            android:hint="Extra details (optional)..."
+            android:gravity="top"
+            android:layout_marginTop="8dp"
+            android:paddingTop="8dp"
+            android:paddingStart="16dp"
+            android:maxLines="5"
+            android:maxLength="5000"
+            android:textSize="16sp" />
+    </LinearLayout>
 </ScrollView>

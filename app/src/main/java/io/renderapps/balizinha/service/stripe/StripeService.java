@@ -1,4 +1,4 @@
-package io.renderapps.balizinha.service;
+package io.renderapps.balizinha.service.stripe;
 
 import java.util.Map;
 

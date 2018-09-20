@@ -25,5 +25,4 @@ public interface LeagueService {
     @POST("changeLeaguePlayerStatus")
     Observable<ResponseBody> changeLeaguePlayerStatus(@Field("userId") String userId,
                                                       @Field("leagueId") String leagueId, @Field("status") String status);
-
 }

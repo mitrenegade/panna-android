@@ -38,8 +38,8 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.service.CloudService;
-import io.renderapps.balizinha.service.EphemeralKeyGenerator;
-import io.renderapps.balizinha.service.FirebaseService;
+import io.renderapps.balizinha.service.DatabaseService;
+import io.renderapps.balizinha.service.stripe.EphemeralKeyGenerator;
 import io.renderapps.balizinha.util.Constants;
 
 public class AccountActivity extends AppCompatActivity {
@@ -70,7 +70,7 @@ public class AccountActivity extends AppCompatActivity {
         getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_close);
 
         remoteConfig = FirebaseRemoteConfig.getInstance();
-        cacheExpiration = Constants.CACHE_EXPIRATION;
+        cacheExpiration = Constants.REMOTE_CACHE_EXPIRATION;
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         databaseRef = FirebaseDatabase.getInstance().getReference();
 
@@ -119,7 +119,7 @@ public class AccountActivity extends AppCompatActivity {
             // Note: it isn't possible for a null or non-card source to be returned.
             if (source != null && Source.CARD.equals(source.getType())) {
                 SourceCardData cardData = (SourceCardData) source.getSourceTypeModel();
-                FirebaseService.startActionSavePayment(this, firebaseUser.getUid(), source.getId(),
+                DatabaseService.startActionSavePayment(this, firebaseUser.getUid(), source.getId(),
                         cardData.getBrand(), cardData.getLast4());
 
                 // update adapter
@@ -211,7 +211,7 @@ public class AccountActivity extends AppCompatActivity {
                 if (task.isSuccessful())
                     remoteConfig.activateFetched();
 
-                paymentRequired = remoteConfig.getBoolean(Constants.PAYMENT_CONFIG_KEY);
+                paymentRequired = remoteConfig.getBoolean(Constants.CONFIG_PAYMENT_KEY);
 
                 // check if user has added a payment method
                 if (paymentRequired) {

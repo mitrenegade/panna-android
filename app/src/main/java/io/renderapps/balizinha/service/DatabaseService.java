@@ -33,7 +33,7 @@ import java.util.concurrent.ExecutionException;
 import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
 
 
-public class FirebaseService extends IntentService {
+public class DatabaseService extends IntentService {
 
     private static final String ACTION_SAVE_PAYMENT = "io.renderapps.balizinha.service.action.PAYMENT";
     private static final String ACTION_UPLOAD_PHOTO = "io.renderapps.balizinha.service.action.UPLOAD_PHOTO";
@@ -54,13 +54,13 @@ public class FirebaseService extends IntentService {
     private static final String EXTRA_BYTES = "io.renderapps.balizinha.service.extra.BYTES";
 
 
-    public FirebaseService() {
-        super("FirebaseService");
+    public DatabaseService() {
+        super("DatabaseService");
     }
 
     public static void startActionSavePayment(Context context, String uid, String sid,
                                               String label, String lastFour) {
-        Intent intent = new Intent(context, FirebaseService.class);
+        Intent intent = new Intent(context, DatabaseService.class);
         intent.setAction(ACTION_SAVE_PAYMENT);
         intent.putExtra(EXTRA_UID, uid);
         intent.putExtra(EXTRA_SOURCE_ID, sid);
@@ -70,7 +70,7 @@ public class FirebaseService extends IntentService {
     }
 
     public static void startActionUploadPhoto(Context context, String uid, byte[] bytes){
-        Intent intent = new Intent(context, FirebaseService.class);
+        Intent intent = new Intent(context, DatabaseService.class);
         intent.setAction(ACTION_UPLOAD_PHOTO);
         intent.putExtra(EXTRA_UID, uid);
         intent.putExtra(EXTRA_BYTES, bytes);
@@ -78,7 +78,7 @@ public class FirebaseService extends IntentService {
     }
 
     public static void startActionUploadFacebookPhoto(Context context, String uid){
-        Intent intent = new Intent(context, FirebaseService.class);
+        Intent intent = new Intent(context, DatabaseService.class);
         intent.setAction(ACTION_UPLOAD_FB_PHOTO);
         intent.putExtra(EXTRA_UID, uid);
         context.startService(intent);
@@ -86,7 +86,7 @@ public class FirebaseService extends IntentService {
 
     public static void startActionAddCharge(Context context, String uid, String eid,
                                             String key, int amount){
-        Intent intent = new Intent(context, FirebaseService.class);
+        Intent intent = new Intent(context, DatabaseService.class);
         intent.setAction(ACTION_ADD_CHARGE);
         intent.putExtra(EXTRA_UID, uid);
         intent.putExtra(EXTRA_EID, eid);
@@ -243,9 +243,7 @@ public class FirebaseService extends IntentService {
                     });
                 }
             });
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }

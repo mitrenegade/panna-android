@@ -11,10 +11,18 @@ import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapView;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
@@ -47,7 +55,7 @@ import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
  * on 12/20/17.
  */
 
-public class EventDetailsFragment extends Fragment {
+public class EventDetailsFragment extends Fragment implements OnMapReadyCallback {
 
     public static String EXTRA_EVENT = "event";
 
@@ -55,6 +63,7 @@ public class EventDetailsFragment extends Fragment {
     private Event mEvent;
     private DatabaseReference databaseRef;
 
+    private GoogleMap googleMap;
     private ArrayList<Player> playerList;
     private List<String> playerListIds;
     private PlayersAdapter playersAdapter;
@@ -76,6 +85,25 @@ public class EventDetailsFragment extends Fragment {
     @BindView(R.id.player_progressbar) ProgressBar progressBar;
     @BindView(R.id.player_count) TextView numOfPlayers;
     @BindView(R.id.btn_attendees) TextView viewAttendees;
+    @BindView(R.id.mapView) MapView mapView;
+
+    @BindView(R.id.hide_button) ImageButton hideButton;
+    @BindView(R.id.left_seperator) View leftSeparator;
+    @BindView(R.id.right_separator) View rightSeparator;
+
+    @OnClick(R.id.hide_button) void hideMap(){
+        if (mapView.isShown()) {
+            hideButton.setImageResource(R.drawable.ic_eye_hidden);
+            mapView.setVisibility(View.GONE);
+            leftSeparator.setVisibility(View.VISIBLE);
+            rightSeparator.setVisibility(View.VISIBLE);
+        } else {
+            hideButton.setImageResource(R.drawable.ic_eye);
+            mapView.setVisibility(View.VISIBLE);
+            leftSeparator.setVisibility(View.INVISIBLE);
+            rightSeparator.setVisibility(View.INVISIBLE);
+        }
+    }
 
 
     @OnClick(R.id.btn_attendees) void viewAttendees(){
@@ -116,6 +144,7 @@ public class EventDetailsFragment extends Fragment {
                              Bundle savedInstanceState) {
         View rootView =  inflater.inflate(R.layout.fragment_event_details, container, false);
         ButterKnife.bind(this, rootView);
+        mapView.onCreate(savedInstanceState);
 
         // setup
         calendar = Calendar.getInstance();
@@ -123,6 +152,8 @@ public class EventDetailsFragment extends Fragment {
         playerListIds = new ArrayList<>();
 
         setupPlayersRecycler();
+        mapView.getMapAsync(this);
+
         updateEvent(mEvent);
         fetchOrganizer();
         fetchPlayers();
@@ -158,8 +189,10 @@ public class EventDetailsFragment extends Fragment {
 
         // title
         if (mEvent.getName() != null)
-            event_title.setText(mEvent.getName().concat(" ").concat("(").concat(mEvent.getType())
-                    .concat(")"));
+            event_title.setText(mEvent.getName());
+        if (mEvent.getType() != null)
+            event_title.setText(event_title.getText().toString().concat(" ").concat("(").concat(mEvent.getType())
+                .concat(")"));
 
         // description
         final String description = (mEvent.getInfo() != null && !mEvent.getInfo().isEmpty()) ?
@@ -351,5 +384,57 @@ public class EventDetailsFragment extends Fragment {
             progressBar.setVisibility(View.GONE);
 
         numOfPlayers.setText(String.valueOf(playerCount).concat( " attending"));
+    }
+
+    @Override
+    public void onMapReady(GoogleMap googleMap) {
+        this.googleMap = googleMap;
+
+        googleMap.getUiSettings().setMapToolbarEnabled(true);
+        googleMap.getUiSettings().setScrollGesturesEnabled(false);
+        googleMap.getUiSettings().setMyLocationButtonEnabled(false);
+        googleMap.getUiSettings().setRotateGesturesEnabled(false);
+        googleMap.getUiSettings().setZoomControlsEnabled(false);
+        googleMap.getUiSettings().setZoomControlsEnabled(false);
+        googleMap.getUiSettings().setTiltGesturesEnabled(false);
+
+        goToLocationZoom(mEvent.lat, mEvent.lon, 16);
+    }
+
+    private void goToLocationZoom(double lat, double lng, float zoom) {
+        if (googleMap == null) return;
+
+        LatLng ll = new LatLng(lat, lng);
+        CameraUpdate update = CameraUpdateFactory.newLatLngZoom(ll, zoom);
+
+        final String title = (mEvent.name == null || mEvent.name.isEmpty()) ? "" : mEvent.name;
+        googleMap.addMarker(new MarkerOptions()
+                .position(new LatLng(lat, lng)).title(mEvent.name).title(title));
+        googleMap.moveCamera(update);
+    }
+
+    @Override
+    public void onResume() {
+        mapView.onResume();
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        mapView.onPause();
+        super.onPause();
+    }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mapView.onDestroy();
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapView.onLowMemory();
     }
 }

@@ -39,20 +39,11 @@ class LeagueVH extends RecyclerView.ViewHolder {
     LeagueVH(Context context, View itemView) {
         super(itemView);
         ButterKnife.bind(this, itemView);
-
         this.mContext = context;
     }
 
     public void bind(final League league, final boolean isOtherLeague){
-
-        // reset
-        location.setText("");
-        description.setText("");
-        tags.setText("");
-
-        logo.setAlpha((float)1.0);
-        title.setAlpha((float)1.0);
-        location.setAlpha((float)1.0);
+        resetHolder();
 
         title.setText(league.getName());
         itemView.setOnClickListener(new View.OnClickListener() {
@@ -68,12 +59,15 @@ class LeagueVH extends RecyclerView.ViewHolder {
             }
         });
 
-        if (league.isPrivate() && isOtherLeague) {
+        if (league.isIsPrivate() && isOtherLeague) {
             // private league
             setLocation("Private");
             logo.setAlpha((float)0.5);
             title.setAlpha((float)0.5);
             location.setAlpha((float)0.5);
+
+            description.setVisibility(View.GONE);
+            tags.setVisibility(View.GONE);
         } else {
             setLocation(league.getCity());
             setDescription(league.getInfo());
@@ -83,6 +77,20 @@ class LeagueVH extends RecyclerView.ViewHolder {
         setLogo(league.getId());
         setLeaguePlayers(league.getPlayerCount());
         setLeagueEvents(league.getEventCount());
+    }
+
+    private void resetHolder(){
+        // reset
+        description.setVisibility(View.VISIBLE);
+        tags.setVisibility(View.VISIBLE);
+
+        location.setText("");
+        description.setText("");
+        tags.setText("");
+
+        logo.setAlpha((float)1.0);
+        title.setAlpha((float)1.0);
+        location.setAlpha((float)1.0);
     }
 
     private void setLocation(String city){
@@ -124,10 +132,10 @@ class LeagueVH extends RecyclerView.ViewHolder {
             @Override
             public void onSuccess(Uri uri) {
                 if (uri != null){
-                    PhotoHelper.glideImage(mContext, logo, uri.toString(), R.drawable.ic_league_placeholder);
+                    PhotoHelper.glideLeagueLogo(mContext, logo, uri.toString(), R.drawable.ic_loading_image);
                 } else {
                     PhotoHelper.clearImage(mContext, logo);
-                    logo.setImageResource(R.drawable.ic_league_default_photo);
+                    PhotoHelper.glideImageResource(mContext, logo, R.drawable.default_league_logo);
                 }
             }
         }).addOnFailureListener(new OnFailureListener() {
@@ -135,7 +143,7 @@ class LeagueVH extends RecyclerView.ViewHolder {
             public void onFailure(@NonNull Exception exception) {
                 // Handle any errors
                 PhotoHelper.clearImage(mContext, logo);
-                logo.setImageResource(R.drawable.ic_league_default_photo);
+                PhotoHelper.glideImageResource(mContext, logo, R.drawable.default_league_logo);
             }
         });
     }

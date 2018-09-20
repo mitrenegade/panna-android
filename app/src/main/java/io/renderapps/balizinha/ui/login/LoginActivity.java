@@ -49,7 +49,7 @@ import butterknife.ButterKnife;
 import butterknife.OnClick;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.service.FirebaseService;
+import io.renderapps.balizinha.service.DatabaseService;
 import io.renderapps.balizinha.ui.main.MainActivity;
 import io.renderapps.balizinha.ui.register.RegisterActivity;
 
@@ -321,7 +321,7 @@ public class LoginActivity extends AppCompatActivity {
                         player.setName(name);
                     if (photoUrl != null) {
                         player.setPhotoUrl(photoUrl.toString());
-                        FirebaseService.startActionUploadFacebookPhoto(mContext, user.getUid());
+                        DatabaseService.startActionUploadFacebookPhoto(mContext, user.getUid());
                     }
 
                     // set player & sign in
@@ -359,7 +359,7 @@ public class LoginActivity extends AppCompatActivity {
         final Uri photoUrl = firebaseUser.getPhotoUrl();
         if (photoUrl != null && !photoUrl.toString().isEmpty()) {
             if (!photoUrl.toString().startsWith("https://firebasestorage")) {
-                FirebaseService.startActionUploadFacebookPhoto(mContext,
+                DatabaseService.startActionUploadFacebookPhoto(mContext,
                         firebaseUser.getUid());
             }
         }

@@ -1,6 +1,7 @@
 package io.renderapps.balizinha.ui.league
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
 import android.support.design.widget.CollapsingToolbarLayout
@@ -13,7 +14,6 @@ import android.view.View
 import android.widget.*
 import butterknife.BindView
 import butterknife.ButterKnife
-import butterknife.OnClick
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import io.renderapps.balizinha.R
@@ -22,10 +22,12 @@ import io.renderapps.balizinha.model.Player
 import io.renderapps.balizinha.service.CloudService
 import io.renderapps.balizinha.service.FireLeague
 import io.renderapps.balizinha.service.PlayerService
+import io.renderapps.balizinha.service.StorageService
 import io.renderapps.balizinha.util.Constants.REF_LEAGUE_PLAYERS
 import io.renderapps.balizinha.util.Constants.REF_PLAYERS
 import io.renderapps.balizinha.util.DialogHelper
 import io.renderapps.balizinha.util.PhotoHelper
+import kotlinx.android.synthetic.main.activity_league.*
 import kotlinx.android.synthetic.main.dialog_add_tag.view.*
 import org.json.JSONException
 import org.json.JSONObject
@@ -42,18 +44,8 @@ class LeagueActivity : AppCompatActivity() {
 
     var databaseRef: DatabaseReference? = null
     var playersChildListener: ChildEventListener? = null
-
-
     var isMember: Boolean = false
 
-    @BindView(R.id.header_img) lateinit var header: ImageView
-    @BindView(R.id.title) lateinit var title: TextView
-    @BindView(R.id.location_members) lateinit var locationAndMembers: TextView
-    @BindView(R.id.description) lateinit var description: TextView
-    @BindView(R.id.tags_recycler) lateinit var tagsRecycler: RecyclerView
-    @BindView(R.id.members_recycler) lateinit var membersRecycler: RecyclerView
-    @BindView(R.id.join_leave_button) lateinit var joinLeaveButton: Button
-    @BindView(R.id.status_progress) lateinit var progress: ProgressBar
 
     @SuppressLint("RestrictedApi") // suppress the warning
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,7 +70,8 @@ class LeagueActivity : AppCompatActivity() {
         val collapsingToolbarLayout = findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar)
         collapsingToolbarLayout.title = " "
 
-        joinLeaveButton.setOnClickListener({ _ -> validateName()})
+        join_leave_button.setOnClickListener({ _ -> validateName()})
+        tags_recycler.setOnClickListener{ _ -> showTagDialog()}
 
         layoutViews()
         loadHeader()
@@ -106,7 +99,7 @@ class LeagueActivity : AppCompatActivity() {
 
 
     private fun layoutViews(){
-        title.text = league.name
+        league_title.text = league.name
         description.text = league.info
         updateMembers()
 
@@ -115,35 +108,41 @@ class LeagueActivity : AppCompatActivity() {
             // remove empty tags
             league.tags.removeAll(Arrays.asList("", null))
 
+            if (league.isIsPrivate)
+                league.tags.add("Private")
+
             // add tag
             league.tags.add("Add a tag")
 
             val adapter = TagsAdapter(this, league.tags)
-            tagsRecycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-            tagsRecycler.adapter = adapter
+            tags_recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            tags_recycler.adapter = adapter
             adapter.notifyDataSetChanged()
         }
 
         // members
         membersAdapter = MembersAdapter(this, members)
-        membersRecycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        membersRecycler.adapter = membersAdapter
+        members_recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        members_recycler.adapter = membersAdapter
     }
 
     private fun loadHeader(){
-        if (league.photoUrl == null || league.photoUrl.isEmpty()){
-            // todo
-            // no header img, add default
-        } else {
-            PhotoHelper.glideHeader(this, header, league.photoUrl, R.drawable.background_league_header)
-        }
+        StorageService.getLeagueHeader(league.id, object: StorageService.StorageCallback{
+            override fun onSuccess(uri: Uri?) {
+                if (uri != null) {
+                    PhotoHelper.glideHeader(this@LeagueActivity, header_img, uri.toString(), R.drawable.background_league_header)
+                } else {
+                    header_img.setImageResource(R.drawable.default_league_header)
+                }
+            }
+        })
     }
 
     private fun updateMembers(){
         if (league.city == null || league.city.isEmpty())
-            locationAndMembers.text = "" + members.size + " members"
+            location_members.text = "" + members.size + " members"
         else
-            locationAndMembers.text = league.city + " \u2022 " + members.size + " members"
+            location_members.text = league.city + " \u2022 " + members.size + " members"
     }
 
     fun updateMembersAdapter(isUpdating: Boolean, index: Int){
@@ -161,17 +160,17 @@ class LeagueActivity : AppCompatActivity() {
     private fun updateJoinLeaveButton(enable: Boolean){
         if (!isDestroyed && !isFinishing){
             runOnUiThread {
-                joinLeaveButton.visibility =  if (enable) View.VISIBLE else View.GONE
+                join_leave_button.visibility =  if (enable) View.VISIBLE else View.GONE
 
                 if (isMember){
-                    joinLeaveButton.background = getDrawable(R.drawable.background_leave_button)
-                    joinLeaveButton.text = getString(R.string.leave_league)
+                    join_leave_button.background = getDrawable(R.drawable.background_leave_button)
+                    join_leave_button.text = getString(R.string.leave_league)
                 } else {
-                    joinLeaveButton.background =  if (league.isPrivate) getDrawable(R.drawable.bg_join_league_disabled) else getDrawable(R.drawable.background_join_league)
-                    joinLeaveButton.text = if (league.isPrivate) getString(R.string.private_league) else getString(R.string.join_league)
+                    join_leave_button.background =  if (league.isIsPrivate) getDrawable(R.drawable.bg_join_league_disabled) else getDrawable(R.drawable.background_join_league)
+                    join_leave_button.text = if (league.isIsPrivate) getString(R.string.private_league) else getString(R.string.join_league)
 
-                    if (league.isPrivate)
-                        joinLeaveButton.isEnabled = false
+                    if (league.isIsPrivate)
+                        join_leave_button.isEnabled = false
                 }
             }
         }
@@ -210,7 +209,7 @@ class LeagueActivity : AppCompatActivity() {
 
         val status = if (isMember) "none" else "member"
         updateJoinLeaveButton(false)
-        progress.visibility = View.VISIBLE
+        status_progress.visibility = View.VISIBLE
 
         CloudService(CloudService.ProgressListener {
             if (it == null || it.isEmpty()){
@@ -234,16 +233,16 @@ class LeagueActivity : AppCompatActivity() {
                 }
             }
 
-            progress.visibility = View.GONE
+            status_progress.visibility = View.GONE
             updateJoinLeaveButton(true)
 
         }).changeLeaguePlayerStatus(uid, league.id, status)
     }
 
-    @OnClick(R.id.tags_recycler)
+
     fun showTagDialog(){
 
-        if (!isMember && league.isPrivate){
+        if (!isMember && league.isIsPrivate){
             Toast.makeText(this@LeagueActivity, "Only members can add tags for a private league.", Toast.LENGTH_LONG).show()
             return
         }
@@ -279,7 +278,7 @@ class LeagueActivity : AppCompatActivity() {
 
         // add tag to current list
         league.tags.add(league.tags.size - 1, tag.toLowerCase())
-        tagsRecycler.adapter.notifyItemInserted(league.tags.size - 2)
+        tags_recycler.adapter?.notifyItemInserted(league.tags.size - 2)
 
         FireLeague.addTag(league.id, tag.toLowerCase())
     }
@@ -301,12 +300,13 @@ class LeagueActivity : AppCompatActivity() {
                         override fun onDataChange(ref: DataSnapshot) {
                             if (ref.exists() && ref.value != null){
                                 val status = ref.getValue(String::class.java)
+
                                 if (status != "none") {
                                     isMember = true
                                 }
                             }
 
-                            progress.visibility = View.GONE
+                            status_progress.visibility = View.GONE
                             updateJoinLeaveButton(true)
                         }
 

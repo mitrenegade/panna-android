@@ -21,6 +21,10 @@ repositories {
     maven { url 'https://maven.fabric.io/public' }
 }
 
+androidExtensions {
+    experimental = true
+}
+
 android {
     signingConfigs {
         release_config {
@@ -37,8 +41,8 @@ android {
         applicationId "io.renderapps.balizinha"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10
-        versionName "0.3.7"
+        versionCode 11
+        versionName "0.3.8"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         renderscriptTargetApi 27
@@ -47,22 +51,33 @@ android {
 
     }
     buildTypes {
+        debug {
+            buildConfigField("String", "BASE_URL", "\"https://us-central1-balizinha-dev.cloudfunctions.net/\"")
+            buildConfigField("String", "STRIPE_KEY", "\"pk_test_YYNWvzYJi3bTyOJi2SNK3IkE\"")
+            buildConfigField("String", "SHARE_LINK", "\"pannadev.page.link\"")
+        }
+
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release_config
+
+            buildConfigField("String", "BASE_URL", "\"https://us-central1-balizinha-c9cd7.cloudfunctions.net/\"")
+            buildConfigField("String", "STRIPE_KEY", "\"pk_live_IziZ9EDk1374oI3rXjEciLBG\"")
+            buildConfigField("String", "SHARE_LINK", "\"pannaleagues.page.link\"")
         }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-
     implementation "com.android.support:support-vector-drawable:$supportLibraryVersion"
     implementation "com.android.support:support-v4:$supportLibraryVersion"
     implementation "com.android.support:appcompat-v7:$supportLibraryVersion"
-    implementation "com.android.support:appcompat-v7:$supportLibraryVersion"
-    implementation "com.android.support:design:$supportLibraryVersion"
     implementation "com.android.support:design:$supportLibraryVersion"
     implementation "com.android.support:support-annotations:$supportLibraryVersion"
     implementation "com.android.support:multidex:$multidexVersion"
@@ -71,15 +86,19 @@ dependencies {
     // Firebase
     implementation 'com.google.firebase:firebase-core:16.0.1'
     implementation 'com.google.firebase:firebase-auth:16.0.3'
-    implementation 'com.google.firebase:firebase-database:16.0.1'
-    implementation 'com.google.firebase:firebase-storage:16.0.1'
+    implementation 'com.google.firebase:firebase-database:16.0.2'
+    implementation 'com.google.firebase:firebase-storage:16.0.2'
     implementation 'com.google.firebase:firebase-config:16.0.0'
     implementation 'com.google.firebase:firebase-functions:16.1.0'
-    implementation 'com.google.firebase:firebase-messaging:17.3.0'
+    implementation 'com.google.firebase:firebase-messaging:17.3.1'
+    implementation 'com.google.firebase:firebase-dynamic-links:16.0.1'
+    implementation 'com.google.firebase:firebase-invites:16.0.1'
 
     // Google Maps
     implementation "com.google.android.gms:play-services-maps:$mapsVersion"
+    implementation "com.google.android.gms:play-services-places:$mapsVersion"
     implementation "com.google.android.gms:play-services-location:$mapsVersion"
+    implementation 'com.google.maps.android:android-maps-utils:0.5+'
 
     // Kotlin support
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion"
@@ -89,6 +108,8 @@ dependencies {
     implementation "com.squareup.retrofit2:adapter-rxjava2:$retroRx2Adapter"
     implementation "com.squareup.retrofit2:converter-moshi:$retroMoshiConverter"
     implementation "com.squareup.retrofit2:retrofit:$retroVersion"
+    implementation "com.squareup.retrofit2:converter-scalars:$retroScalars"
+    implementation 'com.squareup.retrofit2:converter-gson:2.4.0'
 
     // Used to debug Retrofit connections
     implementation "com.squareup.okhttp3:logging-interceptor:$okhttp3Interceptor"
@@ -96,9 +117,12 @@ dependencies {
     // RxJava
     implementation "io.reactivex.rxjava2:rxandroid:$rxandroidVersion"
     implementation "io.reactivex.rxjava2:rxjava:$rxjavaVersion"
+    //    implementation "io.reactivex.rxjava2:rxkotlin:$rxKotlin"
 
     // Glide - Image processing
     implementation "com.github.bumptech.glide:glide:$glideVersion"
+    implementation 'com.android.support:support-v4:28.0.0-rc02'
+    implementation 'com.android.support:recyclerview-v7:28.0.0-rc02'
     annotationProcessor "com.github.bumptech.glide:compiler:$glideVersion"
 
     // Butterknife
@@ -111,7 +135,8 @@ dependencies {
     implementation "android.arch.core:common:$archVersion"
 
     // Crashlytics
-    implementation "com.crashlytics.sdk.android:crashlytics:$crashlyticsVersion"
+
+        implementation "com.crashlytics.sdk.android:crashlytics:$crashlyticsVersion"
 
     // Facebook
     implementation "com.facebook.android:facebook-login:$facebookVersion"

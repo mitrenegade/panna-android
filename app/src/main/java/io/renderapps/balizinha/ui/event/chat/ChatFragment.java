@@ -35,6 +35,7 @@ import butterknife.OnClick;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Action;
 import io.renderapps.balizinha.ui.event.EventDetailsActivity;
+import io.renderapps.balizinha.util.KeyboardUtils;
 
 import static io.renderapps.balizinha.util.Constants.REF_ACTIONS;
 
@@ -47,6 +48,7 @@ public class ChatFragment extends Fragment {
     private String eventTitle;
     private List<Action> actionList;
     private ActionAdapter adapter;
+    private KeyboardUtils keyboardUtils;
 
 
     // views
@@ -88,6 +90,7 @@ public class ChatFragment extends Fragment {
         return fragment;
     }
 
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -105,11 +108,24 @@ public class ChatFragment extends Fragment {
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
         View rootView =  inflater.inflate(R.layout.fragment_chat, container, false);
         ButterKnife.bind(this, rootView);
 
-        sendButton.setEnabled(false);
+        setupKeyboard(rootView);
+        setupRecycler();
+        checkEmptyState();
+        fetchActions();
+
+        return rootView;
+    }
+
+    void setupKeyboard(View root){
+
+        // allows EditText to remain above keyboard while status bar is translucent
+        // track bug for fix: https://issuetracker.google.com/issues/36986276
+        if (getActivity() != null)
+            keyboardUtils = new KeyboardUtils(getActivity(), root);
+
         messageField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
@@ -126,16 +142,6 @@ public class ChatFragment extends Fragment {
             public void afterTextChanged(Editable editable) {}
         });
 
-        setupRecycler();
-        checkEmptyState();
-        fetchActions();
-
-        return rootView;
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
         messageField.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
             public void onFocusChange(View view, boolean hasFocus) {
@@ -146,6 +152,7 @@ public class ChatFragment extends Fragment {
             }
         });
 
+        sendButton.setEnabled(false);
         enableMessaging();
     }
 

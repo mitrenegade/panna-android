@@ -67,6 +67,7 @@
         <!--<item name="notifications">Push notifications</item>-->
         <item name="payment">Click to add a payment method</item>
         <item name="version">Version</item>
+        <item name="website">Website</item>
         <item name="logOut">Log out</item>
     </array>
 
@@ -75,6 +76,7 @@
         <!--<item name="notifications">Push notifications</item>-->
         <item name="payment">Click to view payment methods</item>
         <item name="version">Version</item>
+        <item name="website">Website</item>
         <item name="logOut">Log out</item>
     </array>
 
@@ -82,6 +84,7 @@
         <item name="profile">Edit profile</item>
         <!--<item name="notifications">Push notifications</item>-->
         <item name="version">Version</item>
+        <item name="website">Website</item>
         <item name="logOut">Log out</item>
     </array>
 
@@ -115,11 +118,16 @@
     <string name="status_joining">Joining game…</string>
     <string name="status_processing_payment">Processing payment…</string>
     <string name="leave_game">Leave Game</string>
+    <string name="edit_game">Edit Game</string>
     <string name="join_game">Join Game</string>
     <string name="join_league">Join league</string>
     <string name="leave_league">Leave league</string>
     <string name="private_league">League is private</string>
 
+    <!-- Invites -->
+    <string name="invitation_message">Are you down for a game? Join the event here:</string>
+    <string name="invitation_title">Invite Contacts</string>
+    <string name="ios_app_client_id">604793521337-ucvtl11bm9k5mo944h5vj6dv67digg0q.apps.googleusercontent.com</string>
 
     <!-- Leauges -->
     <string name="your_leagues">Your Leagues</string>
@@ -128,6 +136,28 @@
     <!-- Notifications/Notification channel-->
     <string name="notification_channel_name">Panna Social Leagues</string>
     <string name="notification_channel_id" translatable="false">PANNA_NOTIFICATION_ID</string>
+    <string name="title_activity_add_venue">Add Venue</string>
 
+
+    <!-- Maps/Permission -->
+    <string name="no_location_detected">
+        No location detected. Make sure location is enabled on the device.
+    </string>
+    <string name="permission_denied_explanation">Permission denied. To continue, please enable access to location from your System Settings.
+    </string>
+    <string name="permission_rationale">
+        We need access to your location to help you find a local venue for your event.
+    </string>
+    <string name="settings">Settings</string>
+    <string name="play_service_unavailable">Can\'t connect to Google Play Services</string>
+
+    <string name="no_address_found">Sorry, no address found.</string>
+    <string name="no_location_data_provided">No location data provided.</string>
+    <string name="service_not_available">Sorry, the service is not available</string>
+    <string name="invalid_lat_long_used">Invalid latitude or longitude.</string>
+    <string name="action_share_event">Share</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>

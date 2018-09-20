@@ -1,4 +1,4 @@
-package io.renderapps.balizinha.service;
+package io.renderapps.balizinha.service.stripe;
 
 import android.support.annotation.NonNull;
 
@@ -29,7 +29,8 @@ public class EphemeralKeyGenerator implements EphemeralKeyProvider {
     ProgressListener mProgressListener;
     private @NonNull
     CompositeDisposable mCompositeSubscription;
-    private @NonNull StripeService mStripeService;
+    private @NonNull
+    StripeService mStripeService;
     private String customerId;
 
 
