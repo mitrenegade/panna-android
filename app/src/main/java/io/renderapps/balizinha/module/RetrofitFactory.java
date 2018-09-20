@@ -4,9 +4,7 @@ package io.renderapps.balizinha.module;
  * Created by joel on 1/3/18.
  */
 
-
 import java.util.concurrent.TimeUnit;
-
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;

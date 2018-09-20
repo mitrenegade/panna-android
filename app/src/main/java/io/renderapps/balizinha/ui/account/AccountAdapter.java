@@ -87,7 +87,7 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
                         case 1:
                             Intent payIntent = PaymentMethodsActivity.newIntent(accountActivity);
                             accountActivity.startActivityForResult(payIntent, REQUEST_CODE_SELECT_SOURCE);
-                           accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
+                            accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
                             break;
                         case 2:
                             break;
