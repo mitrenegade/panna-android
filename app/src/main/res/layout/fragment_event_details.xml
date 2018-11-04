@@ -174,18 +174,32 @@
             android:layout_marginEnd="16dp" />
 
 
+        <View
+            android:id="@+id/top_separator"
+            android:layout_width="match_parent"
+            android:layout_height="0.75dp"
+            android:background="#E0E0E0"
+
+            app:layout_constraintTop_toBottomOf="@+id/creator_name"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            android:layout_marginTop="28dp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp" />
+
+
         <com.google.android.gms.maps.MapView
             android:id="@+id/mapView"
             android:layout_width="0dp"
             android:layout_height="200dp"
             android:layout_marginTop="24dp"
+            android:visibility="gone"
 
             app:layout_constraintTop_toTopOf="@+id/separator_layout"
             app:layout_constraintBottom_toTopOf="@+id/iv_players"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintVertical_chainStyle="packed"
-            />
+            app:layout_constraintVertical_chainStyle="packed" />
 
 
         <LinearLayout
@@ -195,6 +209,8 @@
             android:layout_marginTop="16dp"
             android:gravity="center_vertical"
             android:orientation="horizontal"
+            android:visibility="gone"
+
             app:layout_constraintVertical_chainStyle="packed"
             app:layout_constraintTop_toBottomOf="@+id/creator_img">
 
@@ -235,9 +251,7 @@
                 android:layout_marginEnd="16dp"
                 android:layout_weight="0.5"
                 android:background="#E0E0E0"
-                android:visibility="invisible"
-
-                />
+                android:visibility="invisible" />
         </LinearLayout>
 
 

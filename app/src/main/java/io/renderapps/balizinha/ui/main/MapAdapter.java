@@ -7,6 +7,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import io.renderapps.balizinha.R;
@@ -22,10 +23,17 @@ public class MapAdapter extends RecyclerView.Adapter<MapViewHolder> {
     // properties
     private Context mContext;
     private List<Event> events;
+    private List<Event> originalEvents;
+    private List<String> eventIds;
+    private boolean showingCluster = false;
 
-    public MapAdapter(Context context, List<Event> events){
+    public MapAdapter(Context context, List<Event> events, List<String> eventIds){
         this.mContext = context;
         this.events = events;
+        this.eventIds = eventIds;
+
+        originalEvents = new ArrayList<>();
+        originalEvents.addAll(events);
     }
 
     @NonNull
@@ -47,4 +55,61 @@ public class MapAdapter extends RecyclerView.Adapter<MapViewHolder> {
         return events.size();
     }
 
+    public void showClusterEvents(List<Event> clusterEvents){
+        if (isShowingCluster())
+            addOriginalEvents();
+
+        originalEvents.clear();
+        originalEvents.addAll(events);
+
+        events.clear();
+        events.addAll(clusterEvents);
+
+        showingCluster = true;
+        notifyDataSetChanged();
+    }
+
+    // ensures that originalEvents always contains all events and not events from last cluster
+    private void addOriginalEvents(){
+        events.clear();
+        events.addAll(originalEvents);
+    }
+
+    public void clearClusterEvents(){
+        if (showingCluster) {
+
+            events.clear();
+            events.addAll(originalEvents);
+
+            showingCluster = false;
+            notifyDataSetChanged();
+        }
+    }
+
+    public void removeEvent(Event event){
+        final int eventIndex = originalEvents.indexOf(event);
+        if (eventIndex > -1){
+            originalEvents.remove(eventIndex);
+            eventIds.remove(eventIndex);
+        }
+
+        final int index = events.indexOf(event);
+        if (index > -1){
+            events.remove(index);
+            notifyItemRemoved(index);
+        }
+    }
+
+    public void addEvent(Event event){
+        originalEvents.add(event);
+        eventIds.add(event.eid);
+        if (!isShowingCluster()) {
+            events.add(event);
+            notifyItemInserted(events.size() - 1);
+        }
+    }
+
+    public boolean isShowingCluster() {
+        return showingCluster;
+    }
 }

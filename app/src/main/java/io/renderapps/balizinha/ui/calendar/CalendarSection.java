@@ -60,7 +60,6 @@ public class CalendarSection extends Section {
         ((CalendarVH) holder).bind(event);
     }
 
-
     @Override
     public RecyclerView.ViewHolder getHeaderViewHolder(View view) {
         return new CalendarHeaderVH(view);

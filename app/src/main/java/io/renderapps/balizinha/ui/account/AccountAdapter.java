@@ -18,6 +18,7 @@ import com.stripe.android.view.PaymentMethodsActivity;
 
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.ui.profile.SetupProfileActivity;
+import io.renderapps.balizinha.util.ActivityLauncher;
 import io.renderapps.balizinha.util.Constants;
 
 import static io.renderapps.balizinha.ui.account.AccountActivity.REQUEST_CODE_SELECT_SOURCE;
@@ -74,74 +75,66 @@ public class AccountAdapter  extends RecyclerView.Adapter<AccountAdapter.ViewHol
         }
 
         if (paymentRequired) {
-            holder.itemView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    switch (position) {
-                        case 0:
-                            Intent updateIntent = new Intent(accountActivity, SetupProfileActivity.class);
-                            updateIntent.putExtra(SetupProfileActivity.EXTRA_PROFILE_UPDATE, true);
-                            accountActivity.startActivity(updateIntent);
-                            accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
-                            break;
-                        case 1:
-                            Intent payIntent = PaymentMethodsActivity.newIntent(accountActivity);
-                            accountActivity.startActivityForResult(payIntent, REQUEST_CODE_SELECT_SOURCE);
-                            accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
-                            break;
-                        case 2:
-                            break;
-                        case 3:
-                            Intent websiteIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pannaleagues.com/"));
-                            accountActivity.startActivity(websiteIntent);
-                            break;
-                        case 4:
-                            // logout
-                            FirebaseAuth auth = FirebaseAuth.getInstance();
-                            if (auth.getCurrentUser() != null) {
-                                for (UserInfo info : auth.getCurrentUser().getProviderData())
-                                    if (info.getProviderId().equals("facebook.com"))
-                                        LoginManager.getInstance().logOut();
-                            }
+            holder.itemView.setOnClickListener(view -> {
+                switch (position) {
+                    case 0:
+                        Intent updateIntent = new Intent(accountActivity, SetupProfileActivity.class);
+                        updateIntent.putExtra(SetupProfileActivity.EXTRA_PROFILE_UPDATE, true);
+                        accountActivity.startActivity(updateIntent);
+                        accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
+                        break;
+                    case 1:
+                        Intent payIntent = PaymentMethodsActivity.newIntent(accountActivity);
+                        accountActivity.startActivityForResult(payIntent, REQUEST_CODE_SELECT_SOURCE);
+                        accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
+                        break;
+                    case 2:
+                        break;
+                    case 3:
+                        Intent websiteIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pannaleagues.com/"));
+                        accountActivity.startActivity(websiteIntent);
+                        break;
+                    case 4:
+                        // logout
+                        FirebaseAuth auth = FirebaseAuth.getInstance();
+                        if (auth.getCurrentUser() != null) {
+                            for (UserInfo info : auth.getCurrentUser().getProviderData())
+                                if (info.getProviderId().equals("facebook.com"))
+                                    LoginManager.getInstance().logOut();
+                        }
 
-//                            CustomerSession.endCustomerSession();
-                            auth.signOut();
-                            accountActivity.finish();
-                            break;
-                    }
+                        auth.signOut();
+                        ActivityLauncher.launchLogin(accountActivity);
+                        break;
                 }
             });
         } else {
-            holder.itemView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    switch (position) {
-                        case 0:
-                            Intent updateIntent = new Intent(accountActivity, SetupProfileActivity.class);
-                            updateIntent.putExtra(SetupProfileActivity.EXTRA_PROFILE_UPDATE, true);
-                            accountActivity.startActivity(updateIntent);
-                            accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
-                            break;
-                        case 1:
-                            break;
-                        case 2:
-                            Intent websiteIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pannaleagues.com/"));
-                            accountActivity.startActivity(websiteIntent);
-                            break;
-                        case 3:
-                            // logout
-                            FirebaseAuth auth = FirebaseAuth.getInstance();
-                            if (auth.getCurrentUser() != null) {
-                                for (UserInfo info : auth.getCurrentUser().getProviderData())
-                                    if (info.getProviderId().equals("facebook.com"))
-                                        LoginManager.getInstance().logOut();
-                            }
+            holder.itemView.setOnClickListener(view -> {
+                switch (position) {
+                    case 0:
+                        Intent updateIntent = new Intent(accountActivity, SetupProfileActivity.class);
+                        updateIntent.putExtra(SetupProfileActivity.EXTRA_PROFILE_UPDATE, true);
+                        accountActivity.startActivity(updateIntent);
+                        accountActivity.overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
+                        break;
+                    case 1:
+                        break;
+                    case 2:
+                        Intent websiteIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.pannaleagues.com/"));
+                        accountActivity.startActivity(websiteIntent);
+                        break;
+                    case 3:
+                        // logout
+                        FirebaseAuth auth = FirebaseAuth.getInstance();
+                        if (auth.getCurrentUser() != null) {
+                            for (UserInfo info : auth.getCurrentUser().getProviderData())
+                                if (info.getProviderId().equals("facebook.com"))
+                                    LoginManager.getInstance().logOut();
+                        }
 
-//                            CustomerSession.endCustomerSession();
-                            auth.signOut();
-                            accountActivity.finish();
-                            break;
-                    }
+                        auth.signOut();
+                        ActivityLauncher.launchLogin(accountActivity);
+                        break;
                 }
             });
         }

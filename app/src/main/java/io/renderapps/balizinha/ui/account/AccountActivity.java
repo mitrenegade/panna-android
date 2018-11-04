@@ -11,8 +11,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.FrameLayout;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -31,16 +29,24 @@ import com.stripe.android.view.PaymentMethodsActivity;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import io.reactivex.Observable;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.service.CloudService;
+import io.renderapps.balizinha.module.RetrofitFactory;
 import io.renderapps.balizinha.service.DatabaseService;
 import io.renderapps.balizinha.service.stripe.EphemeralKeyGenerator;
+import io.renderapps.balizinha.service.stripe.StripeService;
 import io.renderapps.balizinha.util.Constants;
+import okhttp3.ResponseBody;
 
 public class AccountActivity extends AppCompatActivity {
 
@@ -48,6 +54,7 @@ public class AccountActivity extends AppCompatActivity {
     private boolean paymentRequired;
     private int cacheExpiration;
     private String customerId = "";
+    private CompositeDisposable mCompositeDisposable;
 
     // firebase
     private DatabaseReference databaseRef;
@@ -73,6 +80,7 @@ public class AccountActivity extends AppCompatActivity {
         cacheExpiration = Constants.REMOTE_CACHE_EXPIRATION;
         firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
         databaseRef = FirebaseDatabase.getInstance().getReference();
+        mCompositeDisposable = new CompositeDisposable();
 
         setupRecycler();
         fetchCustomerId();
@@ -86,14 +94,10 @@ public class AccountActivity extends AppCompatActivity {
 
     public void setAdapter(final int optionsId){
         if (isDestroyed() || isFinishing()) return;
-
         final AccountActivity accountActivity = this;
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                String[] accountOptions = getResources().getStringArray(optionsId);
-                mRecycler.setAdapter(new AccountAdapter(accountActivity, accountOptions, paymentRequired));
-            }
+        runOnUiThread(() -> {
+            String[] accountOptions = getResources().getStringArray(optionsId);
+            mRecycler.setAdapter(new AccountAdapter(accountActivity, accountOptions, paymentRequired));
         });
     }
 
@@ -107,6 +111,12 @@ public class AccountActivity extends AppCompatActivity {
     public void onBackPressed() {
         super.onBackPressed();
         finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (mCompositeDisposable != null) mCompositeDisposable.dispose();
     }
 
     @Override
@@ -143,20 +153,7 @@ public class AccountActivity extends AppCompatActivity {
                             customerId = dataSnapshot.getValue(String.class);
                             createCustomerSessions(customerId);
                         } else {
-                            new CloudService(new CloudService.ProgressListener() {
-                                @Override
-                                public void onStringResponse(String string) {
-                                    try {
-                                        JSONObject jsonObject = new JSONObject(string);
-                                        final String id = jsonObject.getString("customer_id");
-                                        if (id != null && !id.isEmpty())
-                                            customerId = id;
-                                        createCustomerSessions(customerId);
-                                    } catch (JSONException e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }).validateStripeCustomer(firebaseUser.getUid(), firebaseUser.getEmail());
+                            validateStripeCustomer();
                         }
                     }
 
@@ -165,14 +162,55 @@ public class AccountActivity extends AppCompatActivity {
                 });
     }
 
+    private void validateStripeCustomer(){
+
+        Map<String, String> customerMap = new HashMap<>();
+        customerMap.put("userId", firebaseUser.getUid());
+        customerMap.put("email", firebaseUser.getEmail());
+
+        final Observable<ResponseBody> observable = RetrofitFactory.getInstance()
+                .create(StripeService.class)
+                .validateStripeCustomer(customerMap);
+
+        mCompositeDisposable.add(observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<ResponseBody>(){
+
+                    @Override
+                    public void onNext(ResponseBody responseBody) {
+                        try {
+                            final String response = responseBody.string();
+                            try {
+                                JSONObject jsonObject = new JSONObject(response);
+                                final String id = jsonObject.getString("customer_id");
+                                if (id != null && !id.isEmpty()) {
+                                    customerId = id;
+                                    createCustomerSessions(customerId);
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        e.printStackTrace();
+                    }
+
+                    @Override
+                    public void onComplete() {}
+                }));
+    }
+
     public void createCustomerSessions(String customerId){
         CustomerSession.initCustomerSession(new EphemeralKeyGenerator(
-                new EphemeralKeyGenerator.ProgressListener() {
-                    @Override
-                    public void onStringResponse(String string) {
-                        if (string.startsWith("Error: ")) {
-                            // failed to initialize customer session
-                        }
+                string -> {
+                    if (string.startsWith("Error: ")) {
+                        // failed to initialize customer session
                     }
                 }, customerId));
 
@@ -205,20 +243,17 @@ public class AccountActivity extends AppCompatActivity {
     }
 
     public void fetchPaymentRequired(){
-        remoteConfig.fetch(cacheExpiration).addOnCompleteListener(this, new OnCompleteListener<Void>() {
-            @Override
-            public void onComplete(@NonNull Task<Void> task) {
-                if (task.isSuccessful())
-                    remoteConfig.activateFetched();
+        remoteConfig.fetch(cacheExpiration).addOnCompleteListener(this, task -> {
+            if (task.isSuccessful())
+                remoteConfig.activateFetched();
 
-                paymentRequired = remoteConfig.getBoolean(Constants.CONFIG_PAYMENT_KEY);
+            paymentRequired = remoteConfig.getBoolean(Constants.CONFIG_PAYMENT_KEY);
 
-                // check if user has added a payment method
-                if (paymentRequired) {
-                    verifyPaymentMethod();
-                } else {
-                    setAdapter(R.array.accountOptionsWithoutPayment);
-                }
+            // check if user has added a payment method
+            if (paymentRequired) {
+                verifyPaymentMethod();
+            } else {
+                setAdapter(R.array.accountOptionsWithoutPayment);
             }
         });
     }

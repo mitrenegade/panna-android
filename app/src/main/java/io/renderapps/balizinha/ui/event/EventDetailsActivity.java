@@ -1,19 +1,13 @@
 package io.renderapps.balizinha.ui.event;
 
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.net.Uri;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CollapsingToolbarLayout;
 import android.support.design.widget.TabLayout;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.CardView;
-import android.support.v7.widget.Toolbar;
 
 import android.support.v4.app.Fragment;
 import android.support.v4.view.ViewPager;
@@ -30,8 +24,6 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -39,23 +31,21 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.dynamiclinks.FirebaseDynamicLinks;
-import com.google.firebase.dynamiclinks.PendingDynamicLinkData;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Event;
-import io.renderapps.balizinha.model.Player;
+import io.renderapps.balizinha.service.EventService;
 import io.renderapps.balizinha.service.PaymentService;
 import io.renderapps.balizinha.service.PlayerService;
 import io.renderapps.balizinha.service.ShareService;
-import io.renderapps.balizinha.service.EventService;
 import io.renderapps.balizinha.service.StorageService;
 import io.renderapps.balizinha.ui.event.chat.ChatFragment;
 import io.renderapps.balizinha.ui.event.organize.CreateEventActivity;
-import io.renderapps.balizinha.util.CommonUtils;
 import io.renderapps.balizinha.util.DialogHelper;
 import io.renderapps.balizinha.util.PhotoHelper;
 
@@ -91,6 +81,7 @@ public class EventDetailsActivity extends AppCompatActivity {
     private ValueEventListener playerCountListener;
     private DatabaseReference databaseRef;
     private FirebaseUser firebaseUser;
+    public CompositeDisposable mCompositeDisposable;
 
     @BindView(R.id.collapsing_toolbar) CollapsingToolbarLayout collapsingToolbarLayout;
     @BindView(R.id.app_bar_layout) AppBarLayout appBarLayout;
@@ -106,10 +97,7 @@ public class EventDetailsActivity extends AppCompatActivity {
     @BindView(R.id.user_status_progress) ProgressBar userStatusProgress;
 
     @OnClick(R.id.joinLeaveButton) void onJoinLeaveGame(){
-        if (firebaseUser == null) {
-            DialogHelper.showLoginDialog(this);
-            return;
-        }
+        if (firebaseUser == null || event == null) return;
 
         if (firebaseUser.getUid().equals(event.getOrganizer())){
             Intent intent = new Intent(this, CreateEventActivity.class);
@@ -120,7 +108,7 @@ public class EventDetailsActivity extends AppCompatActivity {
         }
 
         if (userJoined) {
-            showLeaveDialog();
+            EventService.Companion.showLeaveDialog(this, eventId, event.paymentRequired);
             return;
         }
 
@@ -130,29 +118,27 @@ public class EventDetailsActivity extends AppCompatActivity {
             return;
         }
 
+        mCompositeDisposable.add(PlayerService.Companion.getPlayer(firebaseUser.getUid())
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .subscribe(player -> {
+                    if (player == null){
+                        Toast.makeText(getApplicationContext(), "Please log in to continue.", Toast.LENGTH_LONG).show();
+                        return;
+                    }
 
-        final EventDetailsActivity activity = this;
-        PlayerService.getPlayer(firebaseUser.getUid(), new PlayerService.PlayerCallback() {
-            @Override
-            public void onSuccess(@Nullable Player player) {
-                if (player == null){
-                    Toast.makeText(getApplicationContext(), "Please log in to continue.", Toast.LENGTH_LONG).show();
-                    return;
-                }
+                    if (player.getName() == null || player.getName().isEmpty()){
+                        DialogHelper.showAddNameDialog(EventDetailsActivity.this);
+                        return;
+                    }
 
-                if (player.getName() == null || player.getName().isEmpty()){
-                    DialogHelper.showAddNameDialog(activity);
-                    return;
-                }
-
-                //  valid name
-                if (event.paymentRequired)
-                    PaymentService.Companion.hasUserAlreadyPaid(EventDetailsActivity.this, event, firebaseUser.getUid());
-                else
-                    PaymentService.Companion.onUserJoin(EventDetailsActivity.this, event);
-
-            }
-        });
+                    //  valid name
+                    if (event.paymentRequired)
+                        PaymentService.Companion.hasUserAlreadyPaid(EventDetailsActivity.this, event, firebaseUser.getUid());
+                    else
+                        EventService.Companion.joinEvent(EventDetailsActivity.this, event.eid);
+                }, error ->{
+                    Toast.makeText(getApplicationContext(), "Unable to join event, try again later.", Toast.LENGTH_LONG).show();
+                }));
     }
 
     private int[] tabIcons = {R.drawable.ic_details_filled, R.drawable.ic_chat_filled};
@@ -164,7 +150,7 @@ public class EventDetailsActivity extends AppCompatActivity {
         setContentView(R.layout.activity_event_details);
         ButterKnife.bind(this);
 
-        setSupportActionBar((Toolbar) findViewById(R.id.toolbar));
+        setSupportActionBar(findViewById(R.id.toolbar));
         if (getSupportActionBar() != null)
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         collapsingToolbarLayout.setExpandedTitleColor(getResources().getColor(android.R.color.transparent));
@@ -181,42 +167,19 @@ public class EventDetailsActivity extends AppCompatActivity {
             if (eventIsOver)
                 bottomView.setVisibility(View.GONE);
 
-            init(eventId);
-            return;
+            init();
         }
-
-        FirebaseDynamicLinks.getInstance().getDynamicLink(getIntent()).addOnCompleteListener(new OnCompleteListener<PendingDynamicLinkData>() {
-            @Override
-            public void onComplete(@NonNull Task<PendingDynamicLinkData> task) {
-                if (task.isSuccessful()){
-                    if (task.getResult() != null && task.getResult().getLink() != null){
-                        eventId = task.getResult().getLink().getLastPathSegment();
-
-                        if (FirebaseAuth.getInstance().getCurrentUser() == null){
-                            Toast.makeText(getApplicationContext(), "Login in to view event.", Toast.LENGTH_LONG).show();
-                            CommonUtils.launchLogin(EventDetailsActivity.this);
-                            return;
-                        }
-
-                        init(eventId);
-                        return;
-                    }
-                }
-
-                // error
-                onBackPressed();
-            }
-        });
     }
 
-    private void init(final String eventId){
+    private void init(){
         databaseRef = FirebaseDatabase.getInstance().getReference();
+        mCompositeDisposable = new CompositeDisposable();
         fetchEvent();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-//        getMenuInflater().inflate(R.menu.menu_event, menu);
+        getMenuInflater().inflate(R.menu.menu_event, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -225,7 +188,8 @@ public class EventDetailsActivity extends AppCompatActivity {
         if (item.getItemId() == android.R.id.home)
             onBackPressed();
         if (item.getItemId() == R.id.action_share)
-            ShareService.showShareDialog(this, eventId);
+            if (event != null && event.shareLink != null)
+                ShareService.showShareDialog(this, event.shareLink);
         return super.onOptionsItemSelected(item);
     }
 
@@ -238,6 +202,8 @@ public class EventDetailsActivity extends AppCompatActivity {
             if (playerCountListener != null)
                 databaseRef.child(REF_EVENT_USERS).child(eventId).addValueEventListener(playerCountListener);
         }
+
+        if (mCompositeDisposable != null) mCompositeDisposable.dispose();
     }
 
     @Override
@@ -384,13 +350,10 @@ public class EventDetailsActivity extends AppCompatActivity {
 
     void showButton(){
         if (!isDestroyed() && !isFinishing()) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    updateButtonTitle();
-                    userStatusProgress.setVisibility(View.GONE);
-                    joinLeaveButton.setVisibility(View.VISIBLE);
-                }
+            runOnUiThread(() -> {
+                updateButtonTitle();
+                userStatusProgress.setVisibility(View.GONE);
+                joinLeaveButton.setVisibility(View.VISIBLE);
             });
         }
     }
@@ -417,21 +380,15 @@ public class EventDetailsActivity extends AppCompatActivity {
      *************************************************************************************************/
 
     void loadHeader(){
-        StorageService.Companion.getEventImage(eventId, new StorageService.StorageCallback() {
-            @Override
-            public void onSuccess(@Nullable Uri uri) {
-                if (uri != null){
-                    PhotoHelper.glideHeader(EventDetailsActivity.this, headerImage, uri.toString(), R.drawable.background_league_header);
-                } else if (event != null && event.league != null && !event.league.isEmpty()){
-                    StorageService.Companion.getLeagueHeader(event.league, new StorageService.StorageCallback() {
-                        @Override
-                        public void onSuccess(@Nullable Uri uri) {
-                            if (uri != null) {
-                                PhotoHelper.glideHeader(EventDetailsActivity.this, headerImage, uri.toString(), R.drawable.background_league_header);
-                            }
-                        }
-                    });
-                }
+        StorageService.Companion.getEventImage(eventId, uri -> {
+            if (uri != null){
+                PhotoHelper.glideHeader(EventDetailsActivity.this, headerImage, uri.toString(), R.drawable.background_league_header);
+            } else if (event != null && event.league != null && !event.league.isEmpty()){
+                StorageService.Companion.getLeagueHeader(event.league, uri1 -> {
+                    if (uri1 != null) {
+                        PhotoHelper.glideHeader(EventDetailsActivity.this, headerImage, uri1.toString(), R.drawable.background_league_header);
+                    }
+                });
             }
         });
     }
@@ -456,13 +413,10 @@ public class EventDetailsActivity extends AppCompatActivity {
                 }
 
                 if (!isDestroyed() && !isFinishing()) {
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateButtonTitle();
-                            userStatusProgress.setVisibility(View.GONE);
-                            joinLeaveButton.setVisibility(View.VISIBLE);
-                        }
+                    runOnUiThread(() -> {
+                        updateButtonTitle();
+                        userStatusProgress.setVisibility(View.GONE);
+                        joinLeaveButton.setVisibility(View.VISIBLE);
                     });
                 }
             }
@@ -489,28 +443,25 @@ public class EventDetailsActivity extends AppCompatActivity {
                     }
 
                     event.setEid(eventId);
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            loadHeader();
+                    runOnUiThread(() -> {
+                        loadHeader();
 
-                            progressView.setVisibility(View.GONE);
-                            bottomView.setVisibility(View.VISIBLE);
+                        progressView.setVisibility(View.GONE);
+                        bottomView.setVisibility(View.VISIBLE);
 
-                            joinLeaveButton.setEnabled(true);
-                            eventUpdate = true;
+                        if (EventService.Companion.isEventOver(event.endTime))
+                            bottomView.setVisibility(View.GONE);
 
-                            if (event.name != null) {
-                                title = event.name;
-                                collapsingToolbarLayout.setTitle(title);
-                            }
+                        joinLeaveButton.setEnabled(true);
+                        eventUpdate = true;
 
-                            if (EventService.isEventOver(event.endTime))
-                                bottomView.setVisibility(View.GONE);
-
-                            fetchUserStatus();
-                            loadFragments();
+                        if (event.name != null) {
+                            title = event.name;
+                            collapsingToolbarLayout.setTitle(title);
                         }
+
+                        fetchUserStatus();
+                        loadFragments();
                     });
                     return;
                 }
@@ -539,12 +490,7 @@ public class EventDetailsActivity extends AppCompatActivity {
 
                     playerCount = count;
                     if (!isDestroyed() && !isFinishing()){
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                updatePlayerCount();
-                            }
-                        });
+                        runOnUiThread(() -> updatePlayerCount());
                     }
                 }
             }
@@ -568,46 +514,11 @@ public class EventDetailsActivity extends AppCompatActivity {
      * Action Handlers
      *************************************************************************************************/
 
-    void showLeaveDialog(){
-        final Context mContext = this;
-        AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-        builder.setCancelable(false);
-
-        if (!event.paymentRequired){
-            builder.setMessage(getString(R.string.leave_event));
-        } else {
-            builder.setTitle(getString(R.string.leave_event_title));
-            builder.setMessage(getString(R.string.leave_paid_event));
-        }
-
-        builder.setPositiveButton(
-                "Yes, I'm sure",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        onUserLeave();
-                    }
-                });
-
-        builder.setNegativeButton(
-                "Cancel",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                    }
-                });
-
-        builder.create().show();
-    }
 
     /*
      * Removes user from the event and disables messaging.
      */
-    void onUserLeave(){
-        databaseRef.child(REF_USER_EVENTS).child(firebaseUser.getUid())
-                .child(eventId).setValue(false);
-        databaseRef.child(REF_EVENT_USERS).child(eventId)
-                .child(firebaseUser.getUid()).setValue(false);
-
+    public void onUserLeave(){
         // update UI
         userJoined = false;
         updateButtonTitle();
@@ -623,16 +534,13 @@ public class EventDetailsActivity extends AppCompatActivity {
 
     public void showSuccessfulJoin(){
         if (!isDestroyed() && !isFinishing()) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    userJoined = true;
-                    updateButtonTitle();
-                    joinLeaveButton.setEnabled(true);
+            runOnUiThread(() -> {
+                userJoined = true;
+                updateButtonTitle();
+                joinLeaveButton.setEnabled(true);
 
-                    // allow user to now send messages in game chat
-                    enableMessaging();
-                }
+                // allow user to now send messages in game chat
+                enableMessaging();
             });
         }
     }

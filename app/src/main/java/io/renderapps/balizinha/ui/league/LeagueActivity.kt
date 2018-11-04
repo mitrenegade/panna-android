@@ -7,45 +7,51 @@ import android.os.Bundle
 import android.support.design.widget.CollapsingToolbarLayout
 import android.support.v7.app.AlertDialog
 import android.support.v7.widget.LinearLayoutManager
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.widget.*
-import butterknife.BindView
 import butterknife.ButterKnife
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.observers.DisposableObserver
+import io.reactivex.schedulers.Schedulers
 import io.renderapps.balizinha.R
 import io.renderapps.balizinha.model.League
 import io.renderapps.balizinha.model.Player
-import io.renderapps.balizinha.service.CloudService
-import io.renderapps.balizinha.service.FireLeague
-import io.renderapps.balizinha.service.PlayerService
-import io.renderapps.balizinha.service.StorageService
+import io.renderapps.balizinha.module.RetrofitFactory
+import io.renderapps.balizinha.service.*
+import io.renderapps.balizinha.util.CommonUtils.isValidContext
 import io.renderapps.balizinha.util.Constants.REF_LEAGUE_PLAYERS
 import io.renderapps.balizinha.util.Constants.REF_PLAYERS
 import io.renderapps.balizinha.util.DialogHelper
 import io.renderapps.balizinha.util.PhotoHelper
 import kotlinx.android.synthetic.main.activity_league.*
 import kotlinx.android.synthetic.main.dialog_add_tag.view.*
+import okhttp3.ResponseBody
 import org.json.JSONException
 import org.json.JSONObject
 import java.util.*
 
 class LeagueActivity : AppCompatActivity() {
     companion object {
+        const val EXTRA_LEAGUE_ID = "league_id"
         const val EXTRA_LEAGUE = "league"
     }
 
-    lateinit var league: League
     lateinit var members: ArrayList<Player>
     private lateinit var membersAdapter: MembersAdapter
 
-    var databaseRef: DatabaseReference? = null
-    var playersChildListener: ChildEventListener? = null
-    var isMember: Boolean = false
+    private var league: League? = null
+    private var mCompositeDisposable: CompositeDisposable? = null
 
+    var currentUserId = FirebaseAuth.getInstance().uid
+    var databaseRef: DatabaseReference = FirebaseDatabase.getInstance().reference
+    private var playersChildListener: ChildEventListener? = null
+    private var isMember: Boolean = false
+    private var isInvitation: Boolean = false
 
     @SuppressLint("RestrictedApi") // suppress the warning
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,14 +59,10 @@ class LeagueActivity : AppCompatActivity() {
         setContentView(R.layout.activity_league)
         ButterKnife.bind(this)
 
-        if (intent.extras == null || !intent.hasExtra(EXTRA_LEAGUE)) {
+        if (intent.extras == null || !(intent.hasExtra(EXTRA_LEAGUE) || intent.hasExtra(EXTRA_LEAGUE_ID))) {
             onBackPressed()
             return
         }
-
-        databaseRef = FirebaseDatabase.getInstance().reference
-        members = ArrayList()
-        league = intent.getParcelableExtra(EXTRA_LEAGUE)
 
         // hide collapsing toolbar title
         setSupportActionBar(findViewById(R.id.league_toolbar))
@@ -70,8 +72,37 @@ class LeagueActivity : AppCompatActivity() {
         val collapsingToolbarLayout = findViewById<CollapsingToolbarLayout>(R.id.collapsing_toolbar)
         collapsingToolbarLayout.title = " "
 
-        join_leave_button.setOnClickListener({ _ -> validateName()})
+
+        mCompositeDisposable = CompositeDisposable()
+        if (intent.hasExtra(EXTRA_LEAGUE)) {
+            league = intent.getParcelableExtra(EXTRA_LEAGUE)
+            init()
+        } else {
+            // invitation
+            val leagueId = intent.getStringExtra(EXTRA_LEAGUE_ID)
+            mCompositeDisposable?.add(FireLeague.getLeague(leagueId)
+                    .subscribeOn(AndroidSchedulers.mainThread())
+                    .subscribe({league ->
+                        this.league = league
+                        this.isInvitation = true
+                        init()
+                    }, {
+                        if (isValidContext(this@LeagueActivity))
+                            run {
+                                onBackPressed()
+                            }
+                    }))
+        }
+    }
+
+    private fun init(){
+        members = ArrayList()
+        join_leave_button.setOnClickListener { _ -> validateName()}
         tags_recycler.setOnClickListener{ _ -> showTagDialog()}
+        invite_button.setOnClickListener {_ ->
+            if (!league!!.shareLink.isNullOrEmpty())
+                    ShareService.showShareDialog(this@LeagueActivity, league!!.shareLink)
+        }
 
         layoutViews()
         loadHeader()
@@ -79,6 +110,7 @@ class LeagueActivity : AppCompatActivity() {
         fetchLeagueStatus()
         fetchLeaguePlayers()
     }
+
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         if (item != null && item.itemId == android.R.id.home)
@@ -94,27 +126,32 @@ class LeagueActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        databaseRef?.child(REF_LEAGUE_PLAYERS)?.child(league.id)?.removeEventListener(playersChildListener ?: return)
+        if (league != null)
+            databaseRef.child(REF_LEAGUE_PLAYERS).child(league!!.id).removeEventListener(playersChildListener ?: return)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        if (mCompositeDisposable != null) mCompositeDisposable?.dispose()
+    }
 
     private fun layoutViews(){
-        league_title.text = league.name
-        description.text = league.info
+        league_title.text = league!!.name
+        description.text = league!!.info
         updateMembers()
 
-        if (league.tags != null) {
+        if (league!!.tags != null) {
 
             // remove empty tags
-            league.tags.removeAll(Arrays.asList("", null))
+            league!!.tags.removeAll(Arrays.asList("", null))
 
-            if (league.isIsPrivate)
-                league.tags.add("Private")
+            if (league!!.isIsPrivate)
+                league!!.tags.add("Private")
 
             // add tag
-            league.tags.add("Add a tag")
+            league!!.tags.add("Add a tag")
 
-            val adapter = TagsAdapter(this, league.tags)
+            val adapter = TagsAdapter(this, league!!.tags)
             tags_recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
             tags_recycler.adapter = adapter
             adapter.notifyDataSetChanged()
@@ -124,10 +161,15 @@ class LeagueActivity : AppCompatActivity() {
         membersAdapter = MembersAdapter(this, members)
         members_recycler.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         members_recycler.adapter = membersAdapter
+
+        // invite button
+        if (!league!!.isIsPrivate || (currentUserId != null && league!!.owner == currentUserId)){
+            invite_button.visibility = View.VISIBLE
+        }
     }
 
     private fun loadHeader(){
-        StorageService.getLeagueHeader(league.id, object: StorageService.StorageCallback{
+        StorageService.getLeagueHeader(league!!.id, object: StorageService.StorageCallback{
             override fun onSuccess(uri: Uri?) {
                 if (uri != null) {
                     PhotoHelper.glideHeader(this@LeagueActivity, header_img, uri.toString(), R.drawable.background_league_header)
@@ -139,10 +181,10 @@ class LeagueActivity : AppCompatActivity() {
     }
 
     private fun updateMembers(){
-        if (league.city == null || league.city.isEmpty())
+        if (league!!.city == null || league!!.city.isEmpty())
             location_members.text = "" + members.size + " members"
         else
-            location_members.text = league.city + " \u2022 " + members.size + " members"
+            location_members.text = league!!.city + " \u2022 " + members.size + " members"
     }
 
     fun updateMembersAdapter(isUpdating: Boolean, index: Int){
@@ -160,16 +202,16 @@ class LeagueActivity : AppCompatActivity() {
     private fun updateJoinLeaveButton(enable: Boolean){
         if (!isDestroyed && !isFinishing){
             runOnUiThread {
-                join_leave_button.visibility =  if (enable) View.VISIBLE else View.GONE
+                join_leave_button.visibility =  if (enable) View.VISIBLE else View.INVISIBLE
 
                 if (isMember){
                     join_leave_button.background = getDrawable(R.drawable.background_leave_button)
                     join_leave_button.text = getString(R.string.leave_league)
                 } else {
-                    join_leave_button.background =  if (league.isIsPrivate) getDrawable(R.drawable.bg_join_league_disabled) else getDrawable(R.drawable.background_join_league)
-                    join_leave_button.text = if (league.isIsPrivate) getString(R.string.private_league) else getString(R.string.join_league)
+                    join_leave_button.background =  if (league!!.isIsPrivate && !isInvitation) getDrawable(R.drawable.bg_join_league_disabled) else getDrawable(R.drawable.background_join_league)
+                    join_leave_button.text = if (league!!.isIsPrivate && !isInvitation) getString(R.string.private_league) else getString(R.string.join_league)
 
-                    if (league.isIsPrivate)
+                    if (league!!.isIsPrivate && !isInvitation)
                         join_leave_button.isEnabled = false
                 }
             }
@@ -189,60 +231,73 @@ class LeagueActivity : AppCompatActivity() {
             }
         }
 
-        PlayerService.getPlayer(currUser.uid, PlayerService.PlayerCallback { player ->
-            if (player == null) {
-                Toast.makeText(this@LeagueActivity, "Please log in to continue.", Toast.LENGTH_LONG).show()
-                return@PlayerCallback
-            }
-
-            if (player.name == null || player.name.isEmpty()) {
-                DialogHelper.showAddNameDialog(this@LeagueActivity)
-                return@PlayerCallback
-            }
-
-            // valid name
-            joinLeaveLeague(currUser.uid)
-        })
+        mCompositeDisposable?.add(PlayerService.getPlayer(currentUserId!!)
+                .subscribeOn(AndroidSchedulers.mainThread())
+                .subscribe({ player ->
+                    if (player == null){
+                        Toast.makeText(this@LeagueActivity, "Please log in to continue.", Toast.LENGTH_LONG).show()
+                    } else if (player.name == null || player.name.isEmpty()) {
+                        DialogHelper.showAddNameDialog(this@LeagueActivity)
+                    } else {
+                        // valid name
+                        joinLeaveLeague(currUser.uid)
+                    }
+                }, { _ ->
+                    Toast.makeText(this@LeagueActivity, "Unable to join league, try again later.", Toast.LENGTH_LONG).show()
+                }))
     }
 
     private fun joinLeaveLeague(uid: String) {
-
         val status = if (isMember) "none" else "member"
         updateJoinLeaveButton(false)
         status_progress.visibility = View.VISIBLE
 
-        CloudService(CloudService.ProgressListener {
-            if (it == null || it.isEmpty()){
-                Toast.makeText(this, "Unable to continue. Check your internet connection and try again.", Toast.LENGTH_SHORT).show()
-            } else {
-                try {
-                    val jsonObject = JSONObject(it)
-                    val resultsObj = jsonObject.getJSONObject("result")
+        val observable = RetrofitFactory.getInstance()
+                .create(LeagueService::class.java)
+                .changeLeaguePlayerStatus(uid, league!!.id, status)
 
-                    val success = resultsObj.getString("result")
-                    if (success != "success") {
-                        Toast.makeText(this, "Unable to continue. Try again later.", Toast.LENGTH_SHORT).show()
-                    } else {
-                        // successful
-                        val memberStatus = resultsObj.getString("status")
-                        isMember = memberStatus != "none"
+        mCompositeDisposable?.add(observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(object: DisposableObserver<ResponseBody>(){
+                    override fun onComplete() {}
+
+                    override fun onNext(reponse: ResponseBody) {
+                        val it = reponse.string()
+                        if (it == null || it.isEmpty()){
+                            Toast.makeText(this@LeagueActivity, "Unable to continue. Check your internet connection and try again.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            try {
+                                val jsonObject = JSONObject(it)
+                                val resultsObj = jsonObject.getJSONObject("result")
+
+                                val success = resultsObj.getString("result")
+                                if (success != "success") {
+                                    Toast.makeText(this@LeagueActivity, "Unable to continue. Try again later.", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    // successful
+                                    val memberStatus = resultsObj.getString("status")
+                                    isMember = memberStatus != "none"
+                                }
+
+                            } catch (e: JSONException) {
+                                e.printStackTrace()
+                            }
+                        }
+
+                        status_progress.visibility = View.INVISIBLE
+                        updateJoinLeaveButton(true)
                     }
 
-                } catch (e: JSONException) {
-                    e.printStackTrace()
-                }
-            }
-
-            status_progress.visibility = View.GONE
-            updateJoinLeaveButton(true)
-
-        }).changeLeaguePlayerStatus(uid, league.id, status)
+                    override fun onError(e: Throwable) {
+                        Toast.makeText(this@LeagueActivity, "Unable to continue. Check your internet connection and try again.", Toast.LENGTH_SHORT).show()
+                    }
+                }))
     }
 
 
     fun showTagDialog(){
-
-        if (!isMember && league.isIsPrivate){
+        if (!isMember && league!!.isIsPrivate){
             Toast.makeText(this@LeagueActivity, "Only members can add tags for a private league.", Toast.LENGTH_LONG).show()
             return
         }
@@ -271,16 +326,16 @@ class LeagueActivity : AppCompatActivity() {
             return
         }
 
-        if (league.tags != null && league.tags.contains(tag.toLowerCase())){
+        if (league!!.tags != null && league!!.tags.contains(tag.toLowerCase())){
             Toast.makeText(this, "This tag already exists.", Toast.LENGTH_SHORT).show()
             return
         }
 
         // add tag to current list
-        league.tags.add(league.tags.size - 1, tag.toLowerCase())
-        tags_recycler.adapter?.notifyItemInserted(league.tags.size - 2)
+        league!!.tags.add(league!!.tags.size - 1, tag.toLowerCase())
+        tags_recycler.adapter?.notifyItemInserted(league!!.tags.size - 2)
 
-        FireLeague.addTag(league.id, tag.toLowerCase())
+        FireLeague.addTag(league!!.id, tag.toLowerCase())
     }
 
 
@@ -288,37 +343,32 @@ class LeagueActivity : AppCompatActivity() {
     /**************************************************************************************************
      * Firebase
      *************************************************************************************************/
-
     private fun fetchLeagueStatus(){
-        val uid = FirebaseAuth.getInstance().uid
-        if (uid != null && !uid.isEmpty()){
-            databaseRef?.child(REF_LEAGUE_PLAYERS)
-                    ?.child(league.id)
-                    ?.child(uid)
-                    ?.addListenerForSingleValueEvent(object: ValueEventListener{
+        if (currentUserId != null){
+            databaseRef.child(REF_LEAGUE_PLAYERS).child(league!!.id).child(currentUserId!!).addListenerForSingleValueEvent(object: ValueEventListener{
 
-                        override fun onDataChange(ref: DataSnapshot) {
-                            if (ref.exists() && ref.value != null){
-                                val status = ref.getValue(String::class.java)
+                override fun onDataChange(ref: DataSnapshot) {
+                    if (ref.exists() && ref.value != null){
+                        val status = ref.getValue(String::class.java)
 
-                                if (status != "none") {
-                                    isMember = true
-                                }
-                            }
-
-                            status_progress.visibility = View.GONE
-                            updateJoinLeaveButton(true)
+                        if (status != "none") {
+                            isMember = true
                         }
+                    }
 
-                        override fun onCancelled(p0: DatabaseError) { }
-                    })
+                    status_progress.visibility = View.INVISIBLE
+                    updateJoinLeaveButton(true)
+                }
+
+                override fun onCancelled(p0: DatabaseError) { }
+            })
         }
     }
 
     private fun fetchLeaguePlayers(){
-        val leagueId : String = league.id ?: return
+        val leagueId : String = league!!.id ?: return
 
-        playersChildListener = databaseRef?.child(REF_LEAGUE_PLAYERS)?.child(leagueId)?.addChildEventListener(object: ChildEventListener{
+        playersChildListener = databaseRef.child(REF_LEAGUE_PLAYERS).child(leagueId).addChildEventListener(object: ChildEventListener{
             override fun onCancelled(p0: DatabaseError) {}
 
             override fun onChildMoved(p0: DataSnapshot, p1: String?) {}
@@ -363,8 +413,7 @@ class LeagueActivity : AppCompatActivity() {
     }
 
     fun fetchUser(userId: String){
-
-        databaseRef?.child(REF_PLAYERS)?.child(userId)?.addListenerForSingleValueEvent(object: ValueEventListener {
+        databaseRef.child(REF_PLAYERS).child(userId).addListenerForSingleValueEvent(object: ValueEventListener {
 
             override fun onDataChange(dataSnapshot: DataSnapshot) {
                 if (dataSnapshot.exists() && dataSnapshot.value != null){

@@ -16,6 +16,7 @@ public class League implements Parcelable {
     private String city;
     private String info;
     private String photoUrl;
+    private String shareLink;
 
     private int playerCount;
     private int eventCount;
@@ -57,6 +58,7 @@ public class League implements Parcelable {
         this.city = in.readString();
         this.info = in.readString();
         this.photoUrl = in.readString();
+        this.shareLink = in.readString();
 
         this.eventCount = in.readInt();
         this.playerCount = in.readInt();
@@ -78,6 +80,7 @@ public class League implements Parcelable {
         dest.writeString(this.city);
         dest.writeString(this.info);
         dest.writeString(this.photoUrl);
+        dest.writeString(this.shareLink);
 
         dest.writeInt(this.playerCount);
         dest.writeInt(this.eventCount);
@@ -123,6 +126,9 @@ public class League implements Parcelable {
         this.photoUrl = photoUrl;
     }
 
+    public void setShareLink(String shareLink) {
+        this.shareLink = shareLink;
+    }
 
     public void setTags(ArrayList<String> tags) {
         this.tags = tags;
@@ -186,5 +192,9 @@ public class League implements Parcelable {
 
     public boolean isIsPrivate() {
         return isPrivate;
+    }
+
+    public String getShareLink() {
+        return shareLink;
     }
 }

@@ -23,11 +23,8 @@ import com.facebook.FacebookException;;
 import com.facebook.login.LoginManager;
 import com.facebook.login.LoginResult;
 import com.facebook.login.widget.LoginButton;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseNetworkException;
 import com.google.firebase.auth.AuthCredential;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FacebookAuthProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthEmailException;
@@ -95,23 +92,15 @@ public class LoginActivity extends AppCompatActivity {
         String password = mPasswordField.getText().toString();
 
         auth.signInWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            Bitmap bm = BitmapFactory.decodeResource(getResources(), R.drawable.ic_check);
-                            loginButton.doneLoadingAnimation(android.R.color.white, bm);
-                            mHandler.postDelayed(new Runnable() {
-                                @Override
-                                public void run() {
-                                    launchMainActivity();
-                                }
-                            }, 1000);
-                        } else {
-                            handleException(task.getException());
-                            enableViews(true);
-                            loginButton.revertAnimation();
-                        }
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        Bitmap bm = BitmapFactory.decodeResource(getResources(), R.drawable.ic_check);
+                        loginButton.doneLoadingAnimation(android.R.color.white, bm);
+                        mHandler.postDelayed(() -> launchMainActivity(), 1000);
+                    } else {
+                        handleException(task.getException());
+                        enableViews(true);
+                        loginButton.revertAnimation();
                     }
                 });
     }
@@ -162,6 +151,9 @@ public class LoginActivity extends AppCompatActivity {
         // avoid memory leak
         loginButton.dispose();
         fbLoginButton.dispose();
+        if (facebookButton != null && mFacebookCallbackManager != null) {
+            facebookButton.unregisterCallback(mFacebookCallbackManager);
+        }
     }
 
     /******************************************************************************
@@ -259,31 +251,28 @@ public class LoginActivity extends AppCompatActivity {
     private void handleFacebookAccessToken(AccessToken token) {
         AuthCredential credential = FacebookAuthProvider.getCredential(token.getToken());
         auth.signInWithCredential(credential)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            onFacebookAuth(auth.getCurrentUser());
-                        } else {
-                            try {
-                                throw task.getException();
-                                // If sign in fails, display a message to the user.
-                            } catch (FirebaseAuthUserCollisionException e) {
-                                Toast.makeText(LoginActivity.this, "There is " +
-                                                "already an account with the email associated with" +
-                                                " your Facebook account. Please log in using the email option.",
-                                        Toast.LENGTH_LONG).show();
-                            } catch (Exception e) {
-                                Toast.makeText(LoginActivity.this,
-                                        "Failed to authenticate using Facebook.",
-                                        Toast.LENGTH_SHORT).show();
-                            }
-
-                            loginManager.logOut();
-                            fbLoginButton.revertAnimation();
-                            enableViews(true);
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        onFacebookAuth(auth.getCurrentUser());
+                    } else {
+                        try {
+                            throw task.getException();
+                            // If sign in fails, display a message to the user.
+                        } catch (FirebaseAuthUserCollisionException e) {
+                            Toast.makeText(LoginActivity.this, "There is " +
+                                            "already an account with the email associated with" +
+                                            " your Facebook account. Please log in using the email option.",
+                                    Toast.LENGTH_LONG).show();
+                        } catch (Exception e) {
+                            Toast.makeText(LoginActivity.this,
+                                    "Failed to authenticate using Facebook.",
+                                    Toast.LENGTH_SHORT).show();
                         }
+
+                        loginManager.logOut();
+                        fbLoginButton.revertAnimation();
+                        enableViews(true);
                     }
                 });
     }
@@ -326,12 +315,7 @@ public class LoginActivity extends AppCompatActivity {
 
                     // set player & sign in
                     databaseRef.child(user.getUid()).setValue(player)
-                            .addOnCompleteListener(new OnCompleteListener<Void>() {
-                        @Override
-                        public void onComplete(@NonNull Task<Void> task) {
-                            launchMainActivity();
-                        }
-                    });
+                            .addOnCompleteListener(task -> launchMainActivity());
                 }
             }
 

@@ -2,7 +2,6 @@ package io.renderapps.balizinha.util;
 import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -15,6 +14,7 @@ import android.widget.ImageView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.bumptech.glide.request.RequestOptions;
 
@@ -57,14 +57,11 @@ public class PhotoHelper {
             final CharSequence[] items = {"Take photo", "Choose from gallery"};
             AlertDialog.Builder builder = new AlertDialog.Builder(context);
             builder.setTitle("Add Profile Photo");
-            builder.setItems(items, new DialogInterface.OnClickListener() {
-                @Override
-                public void onClick(DialogInterface dialog, int item) {
-                    if (items[item].equals("Take photo"))
-                        cameraIntent();
-                    else if (items[item].equals("Choose from gallery"))
-                        galleryIntent();
-                }
+            builder.setItems(items, (dialog, item) -> {
+                if (items[item].equals("Take photo"))
+                    cameraIntent();
+                else if (items[item].equals("Choose from gallery"))
+                    galleryIntent();
             });
             builder.show();
         }
@@ -257,9 +254,8 @@ public class PhotoHelper {
 
     public static void glideLeagueLogo(Context context, ImageView imageView, String url, int placeHolder){
         RequestOptions myOptions = new RequestOptions()
-                .fitCenter()
+                .transforms(new CenterCrop(), new RoundedCorners(12))
                 .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                .transform(new RoundedCorners(12))
                 .placeholder(placeHolder);
 
         // load photo

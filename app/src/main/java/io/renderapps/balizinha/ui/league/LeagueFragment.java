@@ -23,18 +23,28 @@ import com.google.firebase.database.ValueEventListener;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.Unbinder;
 import io.github.luizgrp.sectionedrecyclerviewadapter.Section;
 import io.github.luizgrp.sectionedrecyclerviewadapter.SectionedRecyclerViewAdapter;
+import io.reactivex.Observable;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.observers.DisposableObserver;
+import io.reactivex.schedulers.Schedulers;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.League;
-import io.renderapps.balizinha.service.CloudService;
+import io.renderapps.balizinha.module.RetrofitFactory;
+import io.renderapps.balizinha.service.LeagueService;
 import io.renderapps.balizinha.ui.account.AccountActivity;
+import io.renderapps.balizinha.ui.main.MainActivity;
+import okhttp3.ResponseBody;
 
+import static io.renderapps.balizinha.util.CommonUtils.isValidContext;
 import static io.renderapps.balizinha.util.Constants.REF_LEAGUES;
 
 
@@ -49,6 +59,7 @@ public class LeagueFragment extends Fragment {
     private ArrayList<League> userLeagues;
     private ArrayList<String> userLeagueIds;
     private ArrayList<League> otherLeagues;
+    private Unbinder unbinder;
 
     // sections
     SectionedRecyclerViewAdapter sectionAdapter;
@@ -73,7 +84,7 @@ public class LeagueFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View root =  inflater.inflate(R.layout.fragment_league, container, false);
-        ButterKnife.bind(this, root);
+        unbinder = ButterKnife.bind(this, root);
         setHasOptionsMenu(true);
 
         // toolbar
@@ -142,14 +153,11 @@ public class LeagueFragment extends Fragment {
             return;
 
         if (isAdded()){
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    if (league == USER_LEAGUES){
-                        sectionAdapter.notifyItemInsertedInSection(USER_LEAGUES_TAG, index);
-                    } else {
-                        sectionAdapter.notifyItemInsertedInSection(LEAGUES_TAG, index);
-                    }
+            getActivity().runOnUiThread(() -> {
+                if (league == USER_LEAGUES){
+                    sectionAdapter.notifyItemInsertedInSection(USER_LEAGUES_TAG, index);
+                } else {
+                    sectionAdapter.notifyItemInsertedInSection(LEAGUES_TAG, index);
                 }
             });
         }
@@ -163,13 +171,10 @@ public class LeagueFragment extends Fragment {
 
     void setSectionLoaded(){
         if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    userLeagueSection.setState(Section.State.LOADED);
-                    leagueSection.setState(Section.State.LOADED);
-                    sectionAdapter.notifyDataSetChanged();
-                }
+            getActivity().runOnUiThread(() -> {
+                userLeagueSection.setState(Section.State.LOADED);
+                leagueSection.setState(Section.State.LOADED);
+                sectionAdapter.notifyDataSetChanged();
             });
         }
     }
@@ -215,45 +220,78 @@ public class LeagueFragment extends Fragment {
     private void fetchUserLeagues(){
         final String uid = FirebaseAuth.getInstance().getUid();
         if (uid == null || uid.isEmpty()) return;
+        if (!isAdded() || getActivity() == null || !isValidContext((MainActivity)getActivity())) return;
 
-        new CloudService(new CloudService.ProgressListener() {
-            @Override
-            public void onStringResponse(String response) {
-                if (response == null || response.isEmpty()){
-                    setSectionLoaded();
-                    return;
-                }
+        final Observable<ResponseBody> observable = RetrofitFactory.getInstance()
+                .create(LeagueService.class).getLeaguesForPlayer(uid);
 
-                // time out
-                // todo: add network error status, retry functionality
-                if (response.equals("timeout")){
-                    setSectionLoaded();
-                    return;
-                }
+        ((MainActivity)getActivity()).mCompositeDisposable.add(observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(new DisposableObserver<ResponseBody>(){
 
-                try {
-                    JSONObject jsonObject = new JSONObject(response);
-                    if (!jsonObject.isNull("result")) {
-                        JSONObject resultsObj = jsonObject.getJSONObject("result");
-                        Iterator<String> ids = resultsObj.keys();
-
-                        while (ids.hasNext()) {
-                            String leagueId = ids.next();
-                            String status = resultsObj.getString(leagueId);
-
-                            if (!status.equals("none")) {
-                                userLeagueIds.add(leagueId);
-                            }
+                    @Override
+                    public void onNext(ResponseBody responseBody) {
+                        final String response;
+                        try {
+                            response = responseBody.string();
+                            parseJsonLeagues(response);
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                            setSectionLoaded();
                         }
                     }
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                    setSectionLoaded();
-                    return;
-                }
 
-                fetchAllLeagues();
+                    @Override
+                    public void onError(Throwable e) {
+                        setSectionLoaded();
+                    }
+
+                    @Override
+                    public void onComplete() {}
+                }));
+    }
+
+    private void parseJsonLeagues(String response){
+        if (response == null || response.isEmpty()){
+            setSectionLoaded();
+            return;
+        }
+
+        // time out
+        // todo: add network error status, retry functionality
+        if (response.equals("timeout")){
+            setSectionLoaded();
+            return;
+        }
+
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            if (!jsonObject.isNull("result")) {
+                JSONObject resultsObj = jsonObject.getJSONObject("result");
+                Iterator<String> ids = resultsObj.keys();
+
+                while (ids.hasNext()) {
+                    String leagueId = ids.next();
+                    String status = resultsObj.getString(leagueId);
+
+                    if (!status.equals("none")) {
+                        userLeagueIds.add(leagueId);
+                    }
+                }
             }
-        }).getLeaguesForPlayer(uid);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            setSectionLoaded();
+            return;
+        }
+
+        fetchAllLeagues();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        unbinder.unbind();
     }
 }

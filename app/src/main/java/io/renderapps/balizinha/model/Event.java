@@ -65,6 +65,7 @@ public class Event implements Parcelable, ClusterItem {
     public String place;
     public String state;
     public String league;
+    public String shareLink;
 
     public double lat;
     public double lon;
@@ -108,7 +109,7 @@ public class Event implements Parcelable, ClusterItem {
         this.state = in.readString();
         this.place = in.readString();
         this.league = in.readString();
-
+        this.shareLink = in.readString();
 
         this.lat = in.readDouble();
         this.lon = in.readDouble();
@@ -139,6 +140,7 @@ public class Event implements Parcelable, ClusterItem {
         dest.writeString(this.state);
         dest.writeString(this.place);
         dest.writeString(this.league);
+        dest.writeString(this.shareLink);
 
         dest.writeDouble(this.lat);
         dest.writeDouble(this.lon);
@@ -275,6 +277,10 @@ public class Event implements Parcelable, ClusterItem {
         return leagueIsPrivate;
     }
 
+    public String getShareLink() {
+        return shareLink;
+    }
+
     // setters
 
     public void setPhotoUrl(String photoUrl) {
@@ -355,5 +361,9 @@ public class Event implements Parcelable, ClusterItem {
 
     public void setLeague(String league) {
         this.league = league;
+    }
+
+    public void setShareLink(String shareLink) {
+        this.shareLink = shareLink;
     }
 }

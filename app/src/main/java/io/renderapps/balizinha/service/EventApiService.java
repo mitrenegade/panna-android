@@ -17,4 +17,9 @@ public interface EventApiService {
     @FormUrlEncoded
     @POST("getEventsAvailableToUser")
     Observable<ResponseBody> getEventsAvailableToUser(@Field("userId") String userId);
+
+
+    @POST("joinOrLeaveEvent")
+    Observable<ResponseBody> joinOrLeaveEvent(@Body HashMap<String, Object> body);
+
 }

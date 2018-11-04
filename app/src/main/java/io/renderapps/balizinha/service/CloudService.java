@@ -27,8 +27,7 @@ public class CloudService {
         void onStringResponse(String string);
     }
 
-    private @NonNull
-    ProgressListener mProgressListener;
+    private @NonNull ProgressListener mProgressListener;
     private Retrofit retrofit;
 
     public CloudService(@NonNull ProgressListener progressListener) {
@@ -198,6 +197,14 @@ public class CloudService {
         call(eventService.getEventsAvailableToUser(userId));
     }
 
+    public void joinOrLeaveEvent(String userId, String eventId, boolean didJoin){
+        final EventApiService eventService = retrofit.create(EventApiService.class);
+        HashMap<String, Object> params = new HashMap<>();
+        params.put("userId", userId);
+        params.put("eventId", eventId);
+        params.put("join", didJoin);
+        call(eventService.joinOrLeaveEvent(params));
+    }
 
     private void call(Observable<ResponseBody> observable){
         new CompositeDisposable().add(observable
@@ -224,4 +231,11 @@ public class CloudService {
                     public void onComplete() {}
                 }));
     }
+
+
+
+//    public void disposeComposite(){
+//        if (mCompositeDisposable != null)
+//            mCompositeDisposable.dispose();
+//    }
 }

@@ -2,9 +2,9 @@ package io.renderapps.balizinha.ui.event;
 
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -13,7 +13,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.maps.CameraUpdate;
@@ -23,8 +25,6 @@ import com.google.android.gms.maps.MapView;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -42,10 +42,14 @@ import java.util.Locale;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import butterknife.Unbinder;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Event;
 import io.renderapps.balizinha.model.Player;
+import io.renderapps.balizinha.service.FirebaseService;
 import io.renderapps.balizinha.ui.event.attendees.AttendeesActivity;
+import io.renderapps.balizinha.util.Constants;
 import io.renderapps.balizinha.util.PhotoHelper;
 
 import static io.renderapps.balizinha.util.Constants.REF_PLAYERS;
@@ -62,6 +66,7 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
     // properties
     private Event mEvent;
     private DatabaseReference databaseRef;
+    private Unbinder unbinder;
 
     private GoogleMap googleMap;
     private ArrayList<Player> playerList;
@@ -87,6 +92,8 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
     @BindView(R.id.btn_attendees) TextView viewAttendees;
     @BindView(R.id.mapView) MapView mapView;
 
+    @BindView(R.id.top_separator) View topSeparator;
+    @BindView(R.id.separator_layout) LinearLayout separatorLayout;
     @BindView(R.id.hide_button) ImageButton hideButton;
     @BindView(R.id.left_seperator) View leftSeparator;
     @BindView(R.id.right_separator) View rightSeparator;
@@ -143,7 +150,7 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView =  inflater.inflate(R.layout.fragment_event_details, container, false);
-        ButterKnife.bind(this, rootView);
+        unbinder = ButterKnife.bind(this, rootView);
         mapView.onCreate(savedInstanceState);
 
         // setup
@@ -152,7 +159,7 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
         playerListIds = new ArrayList<>();
 
         setupPlayersRecycler();
-        mapView.getMapAsync(this);
+        showMap();
 
         updateEvent(mEvent);
         fetchOrganizer();
@@ -253,14 +260,11 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
 
                     if (isAdded()) {
                         if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    if (creator == null) return;
+                            getActivity().runOnUiThread(() -> {
+                                if (creator == null) return;
 
-                                    if (creator.getName() != null)
-                                        event_creator_name.setText("Organizer: ".concat(creator.getName()));
-                                }
+                                if (creator.getName() != null)
+                                    event_creator_name.setText("Organizer: ".concat(creator.getName()));
                             });
                         }
                     }
@@ -274,17 +278,11 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
     void loadOrganizerPhoto(){
         final Context mContext = getActivity();
         FirebaseStorage.getInstance().getReference()
-                .child("images/player").child(mEvent.getOwner()).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-            @Override
-            public void onSuccess(Uri uri) {
-                if (uri != null){
-                    PhotoHelper.glideImage(mContext, event_creator_photo, uri.toString(), R.drawable.ic_default_photo);
-                }
-            }
-        }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception exception) { }
-        });
+                .child("images/player").child(mEvent.getOwner()).getDownloadUrl().addOnSuccessListener(uri -> {
+                    if (uri != null){
+                        PhotoHelper.glideImage(mContext, event_creator_photo, uri.toString(), R.drawable.ic_default_photo);
+                    }
+                }).addOnFailureListener(exception -> { });
     }
 
     public void fetchPlayers(){
@@ -344,12 +342,7 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
 
                     if (isAdded()) {
                         if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
-                            getActivity().runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    playersAdapter.notifyItemInserted(playerList.size() - 1);
-                                }
-                            });
+                            getActivity().runOnUiThread(() -> playersAdapter.notifyItemInserted(playerList.size() - 1));
                         }
                     }
                 }
@@ -367,12 +360,7 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
             playerListIds.remove(index);
             if (isAdded()) {
                 if (getActivity() != null && !getActivity().isDestroyed() && !getActivity().isFinishing()) {
-                    getActivity().runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            playersAdapter.notifyItemRemoved(index);
-                        }
-                    });
+                    getActivity().runOnUiThread(() -> playersAdapter.notifyItemRemoved(index));
                 }
             }
         }
@@ -386,6 +374,25 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
         numOfPlayers.setText(String.valueOf(playerCount).concat( " attending"));
     }
 
+    private void showMap(){
+        if (isAdded() && getActivity() != null) {
+            ((EventDetailsActivity)getActivity()).mCompositeDisposable.add(FirebaseService.Companion.getRemoteConfig()
+                    .subscribeOn(AndroidSchedulers.mainThread())
+                    .subscribe(remoteConfig -> {
+                        // get update version if available
+                        final boolean canShowMaps = remoteConfig.getBoolean(Constants.CONFIG_MAPS);
+                        if (canShowMaps){
+                            topSeparator.setVisibility(View.GONE);
+                            separatorLayout.setVisibility(View.VISIBLE);
+                            mapView.setVisibility(View.VISIBLE);
+
+                            mapView.getMapAsync(this);
+                        }
+                    }, error -> {
+                    }));
+        }
+    }
+
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.googleMap = googleMap;
@@ -397,7 +404,7 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
         googleMap.getUiSettings().setZoomControlsEnabled(false);
         googleMap.getUiSettings().setZoomControlsEnabled(false);
         googleMap.getUiSettings().setTiltGesturesEnabled(false);
-
+        
         goToLocationZoom(mEvent.lat, mEvent.lon, 16);
     }
 
@@ -430,6 +437,9 @@ public class EventDetailsFragment extends Fragment implements OnMapReadyCallback
     public void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+        if (playersRecycler != null)
+            playersRecycler.setAdapter(null);
+        unbinder.unbind();
     }
 
     @Override

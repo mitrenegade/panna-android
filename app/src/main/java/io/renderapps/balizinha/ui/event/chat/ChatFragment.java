@@ -26,12 +26,12 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import butterknife.Unbinder;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Action;
 import io.renderapps.balizinha.ui.event.EventDetailsActivity;
@@ -49,6 +49,8 @@ public class ChatFragment extends Fragment {
     private List<Action> actionList;
     private ActionAdapter adapter;
     private KeyboardUtils keyboardUtils;
+    private RecyclerView.AdapterDataObserver adapterDataObserver;
+    private Unbinder unbinder;
 
 
     // views
@@ -109,7 +111,7 @@ public class ChatFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView =  inflater.inflate(R.layout.fragment_chat, container, false);
-        ButterKnife.bind(this, rootView);
+        unbinder = ButterKnife.bind(this, rootView);
 
         setupKeyboard(rootView);
         setupRecycler();
@@ -142,13 +144,10 @@ public class ChatFragment extends Fragment {
             public void afterTextChanged(Editable editable) {}
         });
 
-        messageField.setOnFocusChangeListener(new View.OnFocusChangeListener() {
-            @Override
-            public void onFocusChange(View view, boolean hasFocus) {
-                if (hasFocus){
-                    if (adapter.getItemCount() > 0)
-                        messagesRecycler.smoothScrollToPosition(adapter.getItemCount() - 1);
-                }
+        messageField.setOnFocusChangeListener((view, hasFocus) -> {
+            if (hasFocus){
+                if (adapter.getItemCount() > 0)
+                    messagesRecycler.smoothScrollToPosition(adapter.getItemCount() - 1);
             }
         });
 
@@ -165,7 +164,7 @@ public class ChatFragment extends Fragment {
         actionList = new ArrayList<>();
 //        messages = new ArrayList<>();
         adapter = new ActionAdapter(getActivity(), actionList, eventTitle);
-        adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
+        adapterDataObserver = new RecyclerView.AdapterDataObserver() {
             @Override
             public void onItemRangeInserted(int positionStart, int itemCount) {
                 super.onItemRangeInserted(positionStart, itemCount);
@@ -182,7 +181,9 @@ public class ChatFragment extends Fragment {
                     messagesRecycler.scrollToPosition(positionStart);
                 }
             }
-        });
+        };
+
+        adapter.registerAdapterDataObserver(adapterDataObserver);
         messagesRecycler.setAdapter(adapter);
     }
 
@@ -206,11 +207,9 @@ public class ChatFragment extends Fragment {
             public void onChildAdded(@NonNull DataSnapshot dataSnapshot, String s) {
                 Action action = dataSnapshot.getValue(Action.class);
                 actionList.add(action);
-                Collections.sort(actionList, new Comparator<Action>(){
-                    public int compare(Action obj1, Action obj2) {
-                        // ## Ascending order
-                        return Long.compare((long) obj1.getCreatedAt(), (long) obj2.getCreatedAt());
-                    }
+                Collections.sort(actionList, (obj1, obj2) -> {
+                    // ## Ascending order
+                    return Long.compare((long) obj1.getCreatedAt(), (long) obj2.getCreatedAt());
                 });
 
                 updateAdapter();
@@ -232,12 +231,7 @@ public class ChatFragment extends Fragment {
 
     public void updateAdapter(){
         if (isAdded() && getActivity() != null){
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    adapter.notifyItemInserted(actionList.size() - 1);
-                }
-            });
+            getActivity().runOnUiThread(() -> adapter.notifyItemInserted(actionList.size() - 1));
         }
     }
 
@@ -252,5 +246,15 @@ public class ChatFragment extends Fragment {
             else
                 messageField.setHint(R.string.messages_hint);
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (adapter != null && adapterDataObserver != null)
+            adapter.unregisterAdapterDataObserver(adapterDataObserver);
+        if (keyboardUtils != null)
+            keyboardUtils.disable();
+        unbinder.unbind();
     }
 }

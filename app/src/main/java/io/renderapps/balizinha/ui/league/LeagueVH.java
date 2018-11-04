@@ -2,16 +2,12 @@ package io.renderapps.balizinha.ui.league;
 
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
-import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.storage.FirebaseStorage;
 
 
@@ -46,15 +42,12 @@ class LeagueVH extends RecyclerView.ViewHolder {
         resetHolder();
 
         title.setText(league.getName());
-        itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (mContext != null && mContext instanceof MainActivity){
-                    if (!((MainActivity) mContext).isDestroyed() && !((MainActivity) mContext).isFinishing()){
-                        Intent leagueIntent = new Intent(mContext, LeagueActivity.class);
-                        leagueIntent.putExtra(LeagueActivity.EXTRA_LEAGUE, league);
-                        mContext.startActivity(leagueIntent);
-                    }
+        itemView.setOnClickListener(view -> {
+            if (mContext != null && mContext instanceof MainActivity){
+                if (!((MainActivity) mContext).isDestroyed() && !((MainActivity) mContext).isFinishing()){
+                    Intent leagueIntent = new Intent(mContext, LeagueActivity.class);
+                    leagueIntent.putExtra(LeagueActivity.EXTRA_LEAGUE, league);
+                    mContext.startActivity(leagueIntent);
                 }
             }
         });
@@ -128,23 +121,17 @@ class LeagueVH extends RecyclerView.ViewHolder {
 
     private void setLogo(String leagueId){
         FirebaseStorage.getInstance().getReference()
-                .child("images/league").child(leagueId).getDownloadUrl().addOnSuccessListener(new OnSuccessListener<Uri>() {
-            @Override
-            public void onSuccess(Uri uri) {
-                if (uri != null){
-                    PhotoHelper.glideLeagueLogo(mContext, logo, uri.toString(), R.drawable.ic_loading_image);
-                } else {
-                    PhotoHelper.clearImage(mContext, logo);
-                    PhotoHelper.glideImageResource(mContext, logo, R.drawable.default_league_logo);
-                }
-            }
-        }).addOnFailureListener(new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception exception) {
-                // Handle any errors
-                PhotoHelper.clearImage(mContext, logo);
-                PhotoHelper.glideImageResource(mContext, logo, R.drawable.default_league_logo);
-            }
+                .child("images/league").child(leagueId).getDownloadUrl().addOnSuccessListener(uri -> {
+                    if (uri != null){
+                        PhotoHelper.glideLeagueLogo(mContext, logo, uri.toString(), R.drawable.ic_loading_image);
+                    } else {
+                        PhotoHelper.clearImage(mContext, logo);
+                        PhotoHelper.glideImageResource(mContext, logo, R.drawable.default_league_logo);
+                    }
+                }).addOnFailureListener(exception -> {
+            // Handle any errors
+            PhotoHelper.clearImage(mContext, logo);
+            PhotoHelper.glideImageResource(mContext, logo, R.drawable.default_league_logo);
         });
     }
 

@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@android:color/white"
-    android:paddingBottom="16dp"
 
     app:behavior_hideable="false"
     app:behavior_peekHeight="132dp"

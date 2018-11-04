@@ -1,12 +1,9 @@
 package io.renderapps.balizinha.ui.calendar;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
@@ -16,9 +13,9 @@ import android.widget.TextView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -29,6 +26,7 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.renderapps.balizinha.R;
 import io.renderapps.balizinha.model.Event;
+import io.renderapps.balizinha.service.EventService;
 import io.renderapps.balizinha.service.StorageService;
 import io.renderapps.balizinha.ui.event.EventDetailsActivity;
 import io.renderapps.balizinha.ui.event.organize.CreateEventActivity;
@@ -73,31 +71,27 @@ public class CalendarVH extends RecyclerView.ViewHolder {
         setPlayerCount(event.getEid());
         setImage(event.getEid(), event.league);
 
-        itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (mContext != null && mContext instanceof MainActivity) {
-                    if (((MainActivity) mContext).isDestroyed() || ((MainActivity) mContext).isFinishing())
-                        return;
+        itemView.setOnClickListener(view -> {
+            if (mContext != null && mContext instanceof MainActivity) {
+                if (((MainActivity) mContext).isDestroyed() || ((MainActivity) mContext).isFinishing())
+                    return;
 
-                    Intent intent = new Intent(mContext, EventDetailsActivity.class);
-                    intent.putExtra(EventDetailsActivity.EVENT_ID, event.getEid());
-                    intent.putExtra(EventDetailsActivity.EVENT_TITLE, event.getName());
-                    intent.putExtra(EventDetailsActivity.EVENT_LAUNCH_MODE, true);
+                Intent intent = new Intent(mContext, EventDetailsActivity.class);
+                intent.putExtra(EventDetailsActivity.EVENT_ID, event.getEid());
+                intent.putExtra(EventDetailsActivity.EVENT_TITLE, event.getName());
+                intent.putExtra(EventDetailsActivity.EVENT_LAUNCH_MODE, true);
 
-                    if (!IS_UPCOMING)
-                        intent.putExtra(EventDetailsActivity.EVENT_STATUS, true);
-                    else
-                        intent.putExtra(EventDetailsActivity.EVENT_STATUS, false);
+                if (!IS_UPCOMING)
+                    intent.putExtra(EventDetailsActivity.EVENT_STATUS, true);
+                else
+                    intent.putExtra(EventDetailsActivity.EVENT_STATUS, false);
 
-                    // start activity
-                    mContext.startActivity(intent);
-                    ((MainActivity) mContext).overridePendingTransition(R.anim.anim_slide_in_right,
-                            R.anim.anim_slide_out_left);
-                }
+                // start activity
+                mContext.startActivity(intent);
+                ((MainActivity) mContext).overridePendingTransition(R.anim.anim_slide_in_right,
+                        R.anim.anim_slide_out_left);
             }
         });
-
     }
 
     private void setTime(long startTime){
@@ -122,6 +116,9 @@ public class CalendarVH extends RecyclerView.ViewHolder {
         final String uid = FirebaseAuth.getInstance().getUid();
         if (uid == null || uid.isEmpty()) return;
 
+        // enable button by default, when recycled
+        editButton.setEnabled(true);
+
         if (!IS_UPCOMING) {
             editButton.setVisibility(View.GONE);
             return;
@@ -136,22 +133,16 @@ public class CalendarVH extends RecyclerView.ViewHolder {
             }
 
             editButton.setVisibility(View.VISIBLE);
-            editButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    editEvent(event);
-                }
-            });
+            editButton.setOnClickListener(view -> editEvent(event));
             return;
         }
 
-
         // leave
         editButton.setVisibility(View.VISIBLE);
-        editButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                leaveEvent(event);
+        editButton.setOnClickListener(view -> {
+            if (mContext != null) {
+                editButton.setEnabled(false);
+                EventService.Companion.showLeaveDialog((MainActivity) mContext, event.eid, event.paymentRequired);
             }
         });
 
@@ -164,26 +155,20 @@ public class CalendarVH extends RecyclerView.ViewHolder {
 
     private void setImage(String eid, final String leagueId){
         if (eid == null || eid.isEmpty()) return;
-        StorageService.Companion.getEventImage(eid, new StorageService.StorageCallback() {
-            @Override
-            public void onSuccess(@org.jetbrains.annotations.Nullable Uri uri) {
-                if (uri != null){
-                    PhotoHelper.glideImage(mContext, image, uri.toString(), R.drawable.ic_loading_image);
-                } else if (leagueId != null && !leagueId.isEmpty()) {
-                    // load league logo
-                    StorageService.Companion.getLeagueHeader(leagueId, new StorageService.StorageCallback() {
-                        @Override
-                        public void onSuccess(@org.jetbrains.annotations.Nullable Uri leagueUri) {
-                            if (leagueUri != null){
-                                PhotoHelper.glideImage(mContext, image, leagueUri.toString(), R.drawable.ic_loading_image);
-                            } else {
-                                PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
-                            }
-                        }
-                    });
-                } else {
-                    PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
-                }
+        StorageService.Companion.getEventImage(eid, uri -> {
+            if (uri != null){
+                PhotoHelper.glideImage(mContext, image, uri.toString(), R.drawable.ic_loading_image);
+            } else if (leagueId != null && !leagueId.isEmpty()) {
+                // load league logo
+                StorageService.Companion.getLeagueHeader(leagueId, leagueUri -> {
+                    if (leagueUri != null){
+                        PhotoHelper.glideImage(mContext, image, leagueUri.toString(), R.drawable.ic_loading_image);
+                    } else {
+                        PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
+                    }
+                });
+            } else {
+                PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
             }
         });
     }
@@ -221,50 +206,6 @@ public class CalendarVH extends RecyclerView.ViewHolder {
             mContext.startActivity(intent);
             ((MainActivity) mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
         }
-    }
-
-    private void leaveEvent(final Event event) {
-        if (mContext == null) return;
-        if (mContext instanceof MainActivity) {
-            if (((MainActivity) mContext).isDestroyed() || ((MainActivity) mContext).isFinishing())
-                return;
-        }
-
-        final String uid = FirebaseAuth.getInstance().getUid();
-        final DatabaseReference databaseRef = FirebaseDatabase.getInstance().getReference();
-        if (uid == null || uid.isEmpty()) return;
-
-        // joinDialog
-        AlertDialog.Builder builder = new AlertDialog.Builder(mContext);
-        builder.setCancelable(false);
-
-        if (!event.paymentRequired){
-            builder.setMessage(mContext.getString(R.string.leave_event));
-        } else {
-            builder.setTitle(mContext.getString(R.string.leave_event_title));
-            builder.setMessage(mContext.getString(R.string.leave_paid_event));
-        }
-
-        builder.setPositiveButton(
-                "Yes, I'm sure",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        databaseRef.child("userEvents").child(uid)
-                                .child(event.getEid()).setValue(false);
-                        databaseRef.child("eventUsers").child(event.getEid())
-                                .child(uid).setValue(false);
-
-                    }
-                });
-
-        builder.setNegativeButton(
-                "Cancel",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int id) {
-                        dialog.cancel();
-                    }
-                });
-        builder.create().show();
     }
 
     private Date formatTime(double sec){

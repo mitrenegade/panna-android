@@ -15,7 +15,7 @@ class SharedPrefsHelper(context: Context) {
     private val mSharedPreferences: SharedPreferences
 
     var locationRequested: Boolean
-        get() = mSharedPreferences.getBoolean(PREF_KEY_REQUESTED_LOCATION, true)
+        get() = mSharedPreferences.getBoolean(PREF_KEY_REQUESTED_LOCATION, false)
         set(requested) =
             mSharedPreferences.edit().putBoolean(PREF_KEY_REQUESTED_LOCATION, requested).apply()
 

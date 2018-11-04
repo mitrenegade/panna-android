@@ -17,6 +17,7 @@ import android.support.v4.content.ContextCompat
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.widget.Toast
 
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -28,12 +29,17 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.storage.FirebaseStorage
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.observers.DisposableObserver
+import io.reactivex.schedulers.Schedulers
 import io.renderapps.balizinha.AppController
 import io.renderapps.balizinha.BuildConfig.APPLICATION_ID
 import io.renderapps.balizinha.R
 import io.renderapps.balizinha.model.Event
 import io.renderapps.balizinha.model.League
-import io.renderapps.balizinha.service.CloudService
+import io.renderapps.balizinha.module.RetrofitFactory
+import io.renderapps.balizinha.service.EventApiService
 import io.renderapps.balizinha.service.StorageService
 import io.renderapps.balizinha.ui.main.MainActivity
 import io.renderapps.balizinha.util.CommonUtils.showSnackbar
@@ -44,6 +50,7 @@ import io.renderapps.balizinha.util.PhotoHelper
 import io.renderapps.balizinha.util.PhotoHelper.getImageAsBytes
 import kotlinx.android.synthetic.main.activity_create_event.*
 import kotlinx.android.synthetic.main.dialog_max_players.view.*
+import okhttp3.ResponseBody
 import org.json.JSONException
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -67,6 +74,7 @@ class CreateEventActivity : AppCompatActivity() {
     lateinit var latLng: LatLng
     lateinit var dialog: Dialog
 
+    private lateinit var mCompositeDisposable: CompositeDisposable
     private var photoHelper: PhotoHelper? = null
     var league: League? = null
     var event: Event? = null
@@ -88,6 +96,7 @@ class CreateEventActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_event)
+        mCompositeDisposable = CompositeDisposable()
 
         supportActionBar?.title = "Create Event"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -104,6 +113,7 @@ class CreateEventActivity : AppCompatActivity() {
                 onBackPressed()
                 return
             }
+
             isEditing = true
             supportActionBar?.title = "Edit Event"
             loadEvent()
@@ -184,6 +194,11 @@ class CreateEventActivity : AppCompatActivity() {
             startActivity(intent)
             finish()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (mCompositeDisposable != null) mCompositeDisposable.dispose()
     }
 
     private fun launchMap() {
@@ -282,34 +297,56 @@ class CreateEventActivity : AppCompatActivity() {
         // format amount
         payment_amount.setText(params["amount"].toString())
 
-        CloudService(CloudService.ProgressListener {
-            try {
-                if (!it.isNullOrEmpty()) {
-                    val jsonObject = JSONObject(it)
 
-                    if (jsonObject.has("error")) {
-                        showError(jsonObject.getString("error"))
-                        return@ProgressListener
+        val observable = RetrofitFactory.getInstance()
+                .create(EventApiService::class.java)
+                .createEvent(params)
+
+        mCompositeDisposable.add(observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(object: DisposableObserver<ResponseBody>(){
+                    override fun onComplete() {}
+
+                    override fun onNext(t: ResponseBody) {
+                        val it = t.string()
+                        parseCreationResult(it)
                     }
 
-                    // successful
-                    if (!jsonObject.isNull("result")) {
-                        val eventId = jsonObject.getString("eventId")
-                        if (!eventId.isNullOrEmpty())
-                            uploadImage(eventId)
-                        return@ProgressListener
+                    override fun onError(e: Throwable) {
+                        Toast.makeText(this@CreateEventActivity, "Unable to connect to network.", Toast.LENGTH_LONG).show()
+                        finish()
                     }
+                }))
+    }
+
+    private fun parseCreationResult(it: String){
+        try {
+            if (!it.isNullOrEmpty()) {
+                val jsonObject = JSONObject(it)
+
+                if (jsonObject.has("error")) {
+                    showError(jsonObject.getString("error"))
+                    return
                 }
 
-                // error
-                showError("")
-
-            } catch (e: JSONException) {
-                e.printStackTrace()
-                showError("Unable to create game, try again.")
-                return@ProgressListener
+                // successful
+                if (!jsonObject.isNull("result")) {
+                    val eventId = jsonObject.getString("eventId")
+                    if (!eventId.isNullOrEmpty())
+                        uploadImage(eventId)
+                    return
+                }
             }
-        }).createEvent(params)
+
+            // error
+            showError("")
+
+        } catch (e: JSONException) {
+            e.printStackTrace()
+            showError("Unable to create game, try again.")
+            return
+        }
     }
 
     private fun mapEvent(): HashMap<String, Any> {
@@ -382,9 +419,9 @@ class CreateEventActivity : AppCompatActivity() {
     }
 
     private fun showError(error: String) {
+        dialog.dismiss()
         showSnackbar(scrollView, error)
         disableViews(true)
-        dialog.dismiss()
     }
 
 
@@ -494,13 +531,13 @@ class CreateEventActivity : AppCompatActivity() {
         val types = Event.Type.names()
 
         builder.setTitle("Select Event Type")
-        builder.setItems(types, { _, which ->
+        builder.setItems(types) { _, which ->
             // Get the joinDialog selected item
             val selected = types[which]
 
             type_arrow.visibility = View.GONE
             type.text = selected
-        })
+        }
 
         builder.create().show()
     }
@@ -514,15 +551,15 @@ class CreateEventActivity : AppCompatActivity() {
         view.number_picker.minValue = 2
         view.number_picker.maxValue = 64
 
-        builder.setPositiveButton("Set", { dialog, _ ->
+        builder.setPositiveButton("Set") { dialog, _ ->
             max_players_arrow.visibility = View.GONE
             max_players.text = view.number_picker.value.toString()
             dialog.dismiss()
-        })
+        }
 
-        builder.setNegativeButton("Cancel", { dialog, _ ->
+        builder.setNegativeButton("Cancel") { dialog, _ ->
             dialog.dismiss()
-        })
+        }
 
         builder.create().show()
     }

@@ -25,6 +25,7 @@ import java.util.List;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.Unbinder;
 import io.github.luizgrp.sectionedrecyclerviewadapter.Section;
 import io.github.luizgrp.sectionedrecyclerviewadapter.SectionedRecyclerViewAdapter;
 import io.renderapps.balizinha.R;
@@ -38,11 +39,11 @@ public class CalendarFragment extends Fragment{
     private final String UPCOMING_SECTION_TAG = "upcomingTag";
     private final String PAST_SECTION_TAG = "pastTag";
 
+    private Unbinder unbinder;
     private ArrayList<Event> upcomingEventList;
     private ArrayList<Event> pastEventList;
     private List<String> mUpcomingEventIds;
     private List<String> mPastEventIds;
-
     private ChildEventListener childEventListener;
 
     // views
@@ -80,7 +81,7 @@ public class CalendarFragment extends Fragment{
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View root =  inflater.inflate(R.layout.fragment_calendar, container, false);
-        ButterKnife.bind(this, root);
+        unbinder = ButterKnife.bind(this, root);
 
         // toolbar
         Toolbar toolbar = root.findViewById(R.id.calendar_toolbar);
@@ -141,6 +142,14 @@ public class CalendarFragment extends Fragment{
         super.onStop();
         if (mGameReference != null && childEventListener != null)
             mGameReference.removeEventListener(childEventListener);
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mRecycler != null)
+            mRecycler.setAdapter(null);
+        unbinder.unbind();
     }
 
     /******************************************************************************
@@ -298,30 +307,24 @@ public class CalendarFragment extends Fragment{
         if (!isAdded() || getActivity() == null || sectionAdapter == null)
             return;
 
-        getActivity().runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (isRemoval){
-                    sectionAdapter.notifyItemRemovedFromSection(sectionTag, index);
-                } else if (isInsertion){
-                    sectionAdapter.notifyItemInsertedInSection(sectionTag, index);
-                } else {
-                    // an update
-                    sectionAdapter.notifyItemChangedInSection(sectionTag, index);
-                }
+        getActivity().runOnUiThread(() -> {
+            if (isRemoval){
+                sectionAdapter.notifyItemRemovedFromSection(sectionTag, index);
+            } else if (isInsertion){
+                sectionAdapter.notifyItemInsertedInSection(sectionTag, index);
+            } else {
+                // an update
+                sectionAdapter.notifyItemChangedInSection(sectionTag, index);
             }
         });
     }
 
     void setSectionLoaded(){
         if (isAdded() && getActivity() != null){
-            getActivity().runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    upcomingSection.setState(Section.State.LOADED);
-                    pastSection.setState(Section.State.LOADED);
-                    sectionAdapter.notifyDataSetChanged();
-                }
+            getActivity().runOnUiThread(() -> {
+                upcomingSection.setState(Section.State.LOADED);
+                pastSection.setState(Section.State.LOADED);
+                sectionAdapter.notifyDataSetChanged();
             });
         }
     }

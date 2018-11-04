@@ -13,17 +13,24 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
+import io.reactivex.observers.DisposableObserver
+import io.reactivex.schedulers.Schedulers
 import io.renderapps.balizinha.R
 import io.renderapps.balizinha.model.League
-import io.renderapps.balizinha.service.CloudService
+import io.renderapps.balizinha.module.RetrofitFactory
+import io.renderapps.balizinha.service.LeagueService
 import io.renderapps.balizinha.util.Constants.REF_LEAGUES
 import kotlinx.android.synthetic.main.activity_select_league.*
+import okhttp3.ResponseBody
 import org.json.JSONException
 import org.json.JSONObject
 
 class LeagueSelectorActivity : AppCompatActivity() {
 
     lateinit var leagues: ArrayList<League>
+    lateinit var mCompositeDisposable: CompositeDisposable
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,15 +40,14 @@ class LeagueSelectorActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setHomeAsUpIndicator(R.drawable.ic_close)
 
-        setupRecycler()
-//        isOrganizer()
-
         val uid = FirebaseAuth.getInstance().uid
         if (uid.isNullOrEmpty()){
             onBackPressed()
             return
         }
 
+        mCompositeDisposable = CompositeDisposable()
+        setupRecycler()
         fetchUserLeagues(uid!!)
     }
 
@@ -49,6 +55,11 @@ class LeagueSelectorActivity : AppCompatActivity() {
         if (item?.itemId == android.R.id.home)
             finish()
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (mCompositeDisposable != null) mCompositeDisposable.dispose()
     }
 
     private fun setupRecycler(){
@@ -67,45 +78,66 @@ class LeagueSelectorActivity : AppCompatActivity() {
     }
 
     private fun fetchUserLeagues(uid: String){
-        CloudService(CloudService.ProgressListener {
-            if (it.isNullOrEmpty()){
-                showOrganizerDialog()
-                return@ProgressListener
-            }
 
-            try {
-                val jsonObj = JSONObject(it)
-                if (jsonObj.isNull("result")){
-                    showOrganizerDialog()
-                    return@ProgressListener
-                }
+        val observable = RetrofitFactory.getInstance()
+                .create(LeagueService::class.java)
+                .getLeaguesForPlayer(uid)
 
-                val resultObj = jsonObj.getJSONObject("result")
-                val keysIterator = resultObj.keys()
+        mCompositeDisposable.add(observable
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeWith(object: DisposableObserver<ResponseBody>(){
+                    override fun onComplete() {}
 
-                var isOrganizer = false
-                while (keysIterator.hasNext()) {
-                    val leagueId = keysIterator.next() as String
-                    val status = resultObj.getString(leagueId)
-
-                    if (status == "organizer"){
-                        isOrganizer = true
-                        addLeague(leagueId)
+                    override fun onNext(t: ResponseBody) {
+                        val it = t.string()
+                        parseLeaguesJson(it)
                     }
-                }
 
-                if (!isOrganizer){
-                    showOrganizerDialog()
-                }
+                    override fun onError(e: Throwable) {
+                        Toast.makeText(this@LeagueSelectorActivity, "Unable to connect to network.", Toast.LENGTH_LONG).show()
+                        finish()
+                    }
+                })
+        )
+    }
 
-            } catch (e: JSONException) {
-                Toast.makeText(this@LeagueSelectorActivity, "Unable to connect to network.", Toast.LENGTH_LONG).show()
-                finish()
-                e.printStackTrace()
+    private fun parseLeaguesJson(it: String){
+        if (it.isNullOrEmpty()){
+            showOrganizerDialog()
+            return
+        }
+
+        try {
+            val jsonObj = JSONObject(it)
+            if (jsonObj.isNull("result")){
+                showOrganizerDialog()
+                return
             }
 
-        }).getLeaguesForPlayer(uid)
+            val resultObj = jsonObj.getJSONObject("result")
+            val keysIterator = resultObj.keys()
 
+            var isOrganizer = false
+            while (keysIterator.hasNext()) {
+                val leagueId = keysIterator.next() as String
+                val status = resultObj.getString(leagueId)
+
+                if (status == "organizer"){
+                    isOrganizer = true
+                    addLeague(leagueId)
+                }
+            }
+
+            if (!isOrganizer){
+                showOrganizerDialog()
+            }
+
+        } catch (e: JSONException) {
+            Toast.makeText(this@LeagueSelectorActivity, "Unable to connect to network.", Toast.LENGTH_LONG).show()
+            finish()
+            e.printStackTrace()
+        }
     }
 
     private fun addLeague(leagueId: String){
@@ -122,9 +154,9 @@ class LeagueSelectorActivity : AppCompatActivity() {
                             if (key != null && league != null) {
                                 league.id = key
                                 leagues.add(league)
-                                runOnUiThread({
+                                runOnUiThread {
                                     league_recycler.adapter?.notifyItemInserted(leagues.size - 1)
-                                })
+                                }
                             }
                         }
                     }
@@ -138,7 +170,7 @@ class LeagueSelectorActivity : AppCompatActivity() {
         AlertDialog.Builder(this@LeagueSelectorActivity)
                 .setTitle("You're not an organizer")
                 .setMessage("You currently can't organize games for any leagues. Please contact the league owners to become an organizer.")
-                .setPositiveButton("Close") { p0, p1 ->
+                .setPositiveButton("Close") { p0, _ ->
                     finish()
                     p0.dismiss()
                 }

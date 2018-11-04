@@ -5,10 +5,7 @@ package io.renderapps.balizinha.util;
  */
 
 public class Constants {
-
-    public static final String APP_VERSION = "0.3.8";
-    public static final String PAYMENT_CONFIG_KEY = "paymentRequired";
-    public static final int CACHE_EXPIRATION = 7200; // 1.5 hr
+    public static final String APP_VERSION = "1.0.1";
     public static final boolean IN_DEV_MODE = false;
 
     // db endpoints
@@ -30,15 +27,21 @@ public class Constants {
 
     // remote config
     public static final String CONFIG_PAYMENT_KEY = "paymentRequired";
+    public static final String CONFIG_NEWEST_VERSION = "newestVersionAndroid";
     public static final String CONFIG_AVAILABLE_EVENTS = "useGetAvailableEvents";
+    public static final String CONFIG_MAPS = "maps";
     public static final int REMOTE_CACHE_EXPIRATION = 7200; // 1.5 hr
-
 
     // requests and permissions
     public static final int REQUEST_CAMERA = 100;
     public static final int REQUEST_IMAGE = 101;
     public static final int PERMISSION_CAMERA = 102;
     public static final int PERMISSION_GALLERY = 103;
+
+    // locations
+    public static final long UPDATE_INTERVAL = 60 * 1000;  /* 60 secs */
+    public static final long FASTEST_INTERVAL = 39 * 1000; /* 30 sec */
+
 
     // other
     public static final String OS_ANDROID = "android";

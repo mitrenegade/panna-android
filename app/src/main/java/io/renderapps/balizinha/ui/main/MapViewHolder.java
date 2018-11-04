@@ -1,36 +1,22 @@
 package io.renderapps.balizinha.ui.main;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.net.Uri;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.MutableData;
-import com.google.firebase.database.Transaction;
 import com.google.firebase.database.ValueEventListener;
-import com.google.firebase.remoteconfig.FirebaseRemoteConfig;
 
-import org.json.JSONException;
-import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -38,21 +24,18 @@ import java.util.Locale;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.renderapps.balizinha.R;
-import io.renderapps.balizinha.model.Player;
-import io.renderapps.balizinha.service.CloudService;
+import io.renderapps.balizinha.service.EventService;
 import io.renderapps.balizinha.service.PaymentService;
 import io.renderapps.balizinha.service.PlayerService;
 import io.renderapps.balizinha.service.StorageService;
 import io.renderapps.balizinha.ui.event.EventDetailsActivity;
 import io.renderapps.balizinha.model.Event;
-import io.renderapps.balizinha.util.Constants;
 import io.renderapps.balizinha.util.DialogHelper;
 import io.renderapps.balizinha.util.PhotoHelper;
 
 import static io.renderapps.balizinha.util.CommonUtils.isValidContext;
-import static io.renderapps.balizinha.util.Constants.REF_EVENT_USERS;
-import static io.renderapps.balizinha.util.Constants.REF_USER_EVENTS;
 
 /**
  * Created by joel on 7/23/18.
@@ -90,20 +73,17 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
         setJoinButton(event);
         setPlayersCount(event.getEid(), event.getMaxPlayers());
 
-        itemView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(mContext, EventDetailsActivity.class);
-                intent.putExtra(EventDetailsActivity.EVENT_ID, event.getEid());
-                intent.putExtra(EventDetailsActivity.EVENT_TITLE, event.getName());
-                intent.putExtra(EventDetailsActivity.EVENT_STATUS, false);
-                intent.putExtra(EventDetailsActivity.EVENT_LAUNCH_MODE, false);
+        itemView.setOnClickListener(view -> {
+            Intent intent = new Intent(mContext, EventDetailsActivity.class);
+            intent.putExtra(EventDetailsActivity.EVENT_ID, event.getEid());
+            intent.putExtra(EventDetailsActivity.EVENT_TITLE, event.getName());
+            intent.putExtra(EventDetailsActivity.EVENT_STATUS, false);
+            intent.putExtra(EventDetailsActivity.EVENT_LAUNCH_MODE, false);
 
-                if (mContext instanceof MainActivity){
-                    if (isValidContext((MainActivity)mContext)){
-                        mContext.startActivity(intent);
-                        ((MainActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
-                    }
+            if (mContext instanceof MainActivity){
+                if (isValidContext((MainActivity)mContext)){
+                    mContext.startActivity(intent);
+                    ((MainActivity)mContext).overridePendingTransition(R.anim.anim_slide_in_right, R.anim.anim_slide_out_left);
                 }
             }
         });
@@ -120,26 +100,20 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
         if (eventId == null || eventId.isEmpty()) return;
 
         PhotoHelper.clearImage(mContext, image, R.drawable.ic_loading_image);
-        StorageService.Companion.getEventImage(eventId, new StorageService.StorageCallback() {
-            @Override
-            public void onSuccess(@org.jetbrains.annotations.Nullable Uri uri) {
-                if (uri != null){
-                    PhotoHelper.glideImage(mContext, image, uri.toString(), R.drawable.ic_loading_image);
-                } else if (leagueId != null && !leagueId.isEmpty()) {
-                    // load league logo
-                    StorageService.Companion.getLeagueHeader(leagueId, new StorageService.StorageCallback() {
-                        @Override
-                        public void onSuccess(@org.jetbrains.annotations.Nullable Uri leagueUri) {
-                            if (leagueUri != null){
-                                PhotoHelper.glideImage(mContext, image, leagueUri.toString(), R.drawable.ic_loading_image);
-                            } else {
-                                PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
-                            }
-                        }
-                    });
-                } else {
-                    PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
-                }
+        StorageService.Companion.getEventImage(eventId, uri -> {
+            if (uri != null){
+                PhotoHelper.glideImage(mContext, image, uri.toString(), R.drawable.ic_loading_image);
+            } else if (leagueId != null && !leagueId.isEmpty()) {
+                // load league logo
+                StorageService.Companion.getLeagueHeader(leagueId, leagueUri -> {
+                    if (leagueUri != null){
+                        PhotoHelper.glideImage(mContext, image, leagueUri.toString(), R.drawable.ic_loading_image);
+                    } else {
+                        PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
+                    }
+                });
+            } else {
+                PhotoHelper.clearImage(mContext, image, R.drawable.ic_soccer);
             }
         });
     }
@@ -202,15 +176,14 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
     }
 
     private void setJoinButton(final Event event){
-        joinButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                currentUser = FirebaseAuth.getInstance().getCurrentUser();
-                if (currentUser == null) return;
+        joinButton.setOnClickListener(view -> {
+            currentUser = FirebaseAuth.getInstance().getCurrentUser();
+            if (currentUser == null) return;
+            if (!isValidContext((MainActivity)mContext)) return;
 
-                PlayerService.getPlayer(currentUser.getUid(), new PlayerService.PlayerCallback() {
-                    @Override
-                    public void onSuccess(@Nullable Player player) {
+            ((MainActivity)mContext).mCompositeDisposable.add(PlayerService.Companion.getPlayer(currentUser.getUid())
+                    .subscribeOn(AndroidSchedulers.mainThread())
+                    .subscribe(player -> {
                         if (player == null){
                             Toast.makeText(mContext.getApplicationContext(), "Please log in to continue.", Toast.LENGTH_LONG).show();
                             return;
@@ -231,13 +204,13 @@ public class MapViewHolder extends RecyclerView.ViewHolder {
 
 
                         if (event.paymentRequired){
-                            PaymentService.Companion.hasUserAlreadyPaid(mContext, event, currentUser.getUid());
+                            PaymentService.Companion.hasUserAlreadyPaid((MainActivity)mContext, event, currentUser.getUid());
                         } else {
-                            PaymentService.Companion.onUserJoin(mContext, event);
+                            EventService.Companion.joinEvent((MainActivity)mContext, event.eid);
                         }
-                    }
-                });
-            }
+                    }, error ->{
+                        Toast.makeText(mContext.getApplicationContext(), "Unable to join event, try again later.", Toast.LENGTH_LONG).show();
+                    }));
         });
     }
 }
